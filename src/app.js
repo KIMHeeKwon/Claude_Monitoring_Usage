@@ -25,7 +25,8 @@ function resetShort(iso) { const m = minutesLeft(iso); if (m == null) return "";
 function daysLeft(iso) { const m = minutesLeft(iso); return m == null ? null : Math.max(1, Math.round(m / 1440)); }
 
 const STATUS_MSG = {
-  no_source: "설정에서 연결 방법을 고르세요",
+  no_source: "우클릭 → Claude 한도 연결",
+  waiting: "Claude Code 세션을 한 번 여세요",
   no_token: "Claude Code 로그인 필요",
   auth_expired: "로그인 갱신 필요",
   rate_limited: "5분 뒤 재시도",
@@ -42,10 +43,11 @@ function derive() {
   let rootState = u && u.status === "ok" ? level(five) : hasVals ? "stale" : "none";
   if (rootState === "none") rootState = "ok";
   let reset = "", resetS = "";
-  if (!u || u.status === "no_source") reset = resetS = STATUS_MSG.no_source;
-  else if (u.status === "ok") { reset = resetLong(u.five_hour.resets_at); resetS = resetShort(u.five_hour.resets_at); }
-  else if (u.status === "stale" || u.status === "unreachable") reset = resetS = ageMsg(u);
+  if (!u) reset = resetS = STATUS_MSG.no_source;
+  else if (u.status === "ok" && u.five_hour) { reset = resetLong(u.five_hour.resets_at); resetS = resetShort(u.five_hour.resets_at); }
+  else if ((u.status === "stale" || u.status === "unreachable") && u.fetched_at) reset = resetS = ageMsg(u);
   else reset = resetS = STATUS_MSG[u.status] || u.status;
+  if (state.err) reset = resetS = state.err;   // 훅 설치 실패 등, 사용자가 손쓸 수 있는 오류
   const wd = week != null && u.seven_day ? daysLeft(u.seven_day.resets_at) : null;
   const memPct = s ? Math.round((s.mem.used_gb / s.mem.total_gb) * 100) : null;
   const now = new Date();
@@ -81,7 +83,7 @@ const spark = (key, W, H, withArea) => `<svg class="spark" viewBox="0 0 ${W} ${H
 const sysRow = (key, label, valKey, W, H, withArea, cls = "r") =>
   `<div class="${cls}" ${key === "gpu" ? "data-gpu" : ""}><span class="lbl row">${label}</span>${spark(key, W, H, withArea)}` +
   `<span class="val" data-t="${valKey}"${valKey === "memGb" ? "" : ' data-suffix="%"'}></span></div>`;
-const num = (cls = "", extra = "") => `<span class="num five-num ${cls}" data-t="fiveT"></span><span class="num pct ${extra}">%</span>`;
+const num = (cls = "", extra = "") => `<span class="num five-num ${cls}" data-t="fiveT"></span><span class="num pct ${extra}" data-pct="five">%</span>`;
 
 // ---------- 레이아웃 7종 (README 표 · 시안 인라인 값) ----------
 const LAYOUTS = {
@@ -106,9 +108,9 @@ const LAYOUTS = {
   "2b": () => `
     <div class="head drag" data-tauri-drag-region><span class="lbl" data-tauri-drag-region>CLAUDE LIMITS · SYSTEM</span><span class="clk"><span data-t="clock"></span> · <span data-t="source"></span></span></div>
     <div class="body">
-      <div class="gc">${gaugeS("five", "st")}<div class="num five-num" style="font-size:26px"><span data-t="fiveT"></span><span class="pct">%</span></div><div class="lbl s">5H</div><div class="note" data-t="resetShort"></div></div>
-      <div class="gc">${gaugeS("week")}<div class="num" style="font-size:26px"><span data-t="weekT"></span><span class="pct">%</span></div><div class="lbl s">WEEK</div><div class="note" data-t="weekResetShort"></div></div>
-      <div class="gc" data-opus>${gaugeS("opus").replace('class="arc "', 'class="arc" style="stroke:var(--line2)"')}<div class="num" style="font-size:26px"><span data-t="opusT"></span><span class="pct">%</span></div><div class="lbl s">OPUS</div><div class="note" data-t="weekResetShort"></div></div>
+      <div class="gc">${gaugeS("five", "st")}<div class="num five-num" style="font-size:26px"><span data-t="fiveT"></span><span class="pct" data-pct="five">%</span></div><div class="lbl s">5H</div><div class="note" data-t="resetShort"></div></div>
+      <div class="gc">${gaugeS("week")}<div class="num" style="font-size:26px"><span data-t="weekT"></span><span class="pct" data-pct="week">%</span></div><div class="lbl s">WEEK</div><div class="note" data-t="weekResetShort"></div></div>
+      <div class="gc" data-opus>${gaugeS("opus").replace('class="arc "', 'class="arc" style="stroke:var(--line2)"')}<div class="num" style="font-size:26px"><span data-t="opusT"></span><span class="pct" data-pct="opus">%</span></div><div class="lbl s">OPUS</div><div class="note" data-t="weekResetShort"></div></div>
       <div class="sys">${sysRow("cpu", "CPU", "cpu", 120, 18, false)}${sysRow("mem", "MEM", "mem", 120, 18, false)}${sysRow("gpu", "GPU", "gpu", 120, 18, false)}</div>
     </div>`,
 
@@ -156,7 +158,7 @@ const LAYOUTS = {
   "2f": () => `
     <div class="c1 drag" data-tauri-drag-region>
       <div class="head" data-tauri-drag-region><span class="lbl" data-tauri-drag-region>5H LIMIT</span><span class="note" data-t="reset"></span></div>
-      <div class="g" data-tauri-drag-region><span class="num five-num acc" style="font-size:40px"><span data-t="fiveT"></span><span class="pct">%</span></span><div class="dots"><i data-w="five"></i></div></div>
+      <div class="g" data-tauri-drag-region><span class="num five-num acc" style="font-size:40px"><span data-t="fiveT"></span><span class="pct" data-pct="five">%</span></span><div class="dots"><i data-w="five"></i></div></div>
       <div class="foot"><span>주간 <b data-t="weekT" data-suffix="%"></b></span><span data-opus>Opus <b data-t="opusT" data-suffix="%"></b></span><span><span data-t="clock"></span> · <span data-t="source"></span></span></div>
     </div>
     <div class="c2">
@@ -209,6 +211,7 @@ function render() {
     const v = d[el.dataset.t];
     el.textContent = v == null ? "–" : v + (v === "–" ? "" : el.dataset.suffix || "");
   });
+  panel.querySelectorAll("[data-pct]").forEach((el) => (el.hidden = d[el.dataset.pct] == null));
   const pct = (k) => (d[k] == null ? 0 : d[k]);
   panel.querySelectorAll("[data-w]").forEach((el) => (el.style.width = pct(el.dataset.w) + "%"));
   panel.querySelectorAll("[data-hh]").forEach((el) => (el.style.height = pct(el.dataset.hh) + "%"));
@@ -230,6 +233,7 @@ listen("sys:update", ({ payload: s }) => {
   render();
 });
 listen("usage:update", ({ payload: u }) => { if (!state.ui.demo) { state.usage = u; render(); } });
+listen("usage:error", ({ payload: msg }) => { state.err = String(msg); render(); });
 listen("ui:settings", ({ payload: ui }) => { Object.assign(state.ui, ui); applyTheme(); if (state.ui.demo) demoTick(); else if (state.usage && state.usage.source === "demo") state.usage = null; render(); });
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { applyTheme(); render(); });
 

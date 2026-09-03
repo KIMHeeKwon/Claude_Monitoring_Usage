@@ -316,8 +316,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
 dependencies = [
  "iana-time-zone",
+ "js-sys",
  "num-traits",
  "serde",
+ "wasm-bindgen",
  "windows-link 0.2.1",
 ]
 
@@ -325,6 +327,7 @@ dependencies = [
 name = "claude-monitoring-usage"
 version = "0.0.1"
 dependencies = [
+ "chrono",
  "serde",
  "serde_json",
  "sysinfo",
@@ -2723,6 +2726,7 @@ version = "1.0.151"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c841b55ecdae098c80dcae9cf767f6f8a0c2cdb3416bbef72181df4d0fe73f14"
 dependencies = [
+ "indexmap 2.14.1",
  "itoa",
  "memchr",
  "serde",

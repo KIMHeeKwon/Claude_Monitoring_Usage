@@ -22,6 +22,8 @@ pub fn build<R: Runtime>(app: &AppHandle<R>, s: &Settings, for_tray: bool) -> ta
         theme.append(&check(format!("theme:{id}"), name, s.theme == id)?)?;
     }
 
+    // Claude 한도 연결 — 사용자의 settings.json을 고치는 동작이므로 명시적으로 고르게 한다.
+    let hook = check("hook".into(), "Claude 한도 연결 (statusline 훅)", crate::usage::is_installed())?;
     let pulse = check("alarm:pulse".into(), "위험(90%↑) 시 숫자 깜빡임", s.alarm == "pulse")?;
     let demo = check("demo".into(), "예시 값 표시 (검증용)", s.demo)?;
     let sep = PredefinedMenuItem::separator(app)?;
@@ -32,7 +34,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>, s: &Settings, for_tray: bool) -> ta
     };
     let quit = MenuItem::with_id(app, "quit", "종료", true, None::<&str>)?;
 
-    Menu::with_items(app, &[&layout, &theme, &pulse, &demo, &sep, &toggle, &sep, &quit])
+    Menu::with_items(app, &[&layout, &theme, &sep, &hook, &pulse, &demo, &sep, &toggle, &sep, &quit])
 }
 
 /// 메뉴 선택 처리: 설정 갱신 → 저장 → 창 크기 → 창에 통보 → 트레이 메뉴 체크 상태 갱신.
@@ -42,6 +44,18 @@ pub fn handle<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
         "quit" => { app.exit(0); return; }
         "show" => { show_main(app); return; }
         "hide" => { if let Some(w) = app.get_webview_window("main") { let _ = w.hide(); } return; }
+        "hook" => {
+            let r = if crate::usage::is_installed() { crate::usage::uninstall() } else { crate::usage::install() };
+            if let Err(e) = r {
+                let _ = app.emit("usage:error", e);
+            }
+            // 메뉴의 체크 상태를 새 상태로 다시 그린다.
+            let s = app.state::<Store>().0.lock().unwrap().clone();
+            if let Some(tray) = app.tray_by_id("main") {
+                if let Ok(m) = build(app, &s, true) { let _ = tray.set_menu(Some(m)); }
+            }
+            return;
+        }
         _ => {}
     }
     let store = app.state::<Store>();

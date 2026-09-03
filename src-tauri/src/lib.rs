@@ -1,6 +1,7 @@
 mod menu;
 mod settings;
 mod sysmon;
+mod usage;
 
 use settings::{Settings, Store};
 use std::sync::Mutex;
@@ -52,6 +53,7 @@ pub fn run() {
                 .build(app)?;
 
             sysmon::spawn(app.handle().clone());
+            usage::spawn(app.handle().clone());
             Ok(())
         })
         // 우클릭 팝업 메뉴의 선택은 앱 수준 핸들러로 온다.

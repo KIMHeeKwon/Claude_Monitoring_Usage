@@ -122,7 +122,8 @@ flowchart LR
 | 원리 | Claude Code는 세션 중 `settings.json`의 `statusLine.command`를 주기적으로 실행하며 표준 입력으로 JSON을 준다. 그 안의 `rate_limits`가 `/usage`와 같은 값이다 (공식 문서 code.claude.com/docs/en/statusline). Pro/Max 한정, 첫 응답 이후부터 |
 | 설치 | 앱이 최초 실행 시 작은 스크립트를 `~/.claude/usage-monitor/`에 놓고, `settings.json`에 statusline 항목을 추가하도록 **사용자 동의를 받아** 설정한다. 사용자가 이미 statusline을 쓰고 있으면 기존 명령을 감싸서(wrapping) 출력은 그대로 두고 JSON만 파일로 복사한다. **실측 (2026-09-03, 사용자 PC)**: `settings.json`에 이미 다른 도구(orca)의 statusline 항목이 있고, 그 경로가 MacBook 경로(`/Users/...`)다 — 즉 `settings.json`이 두 대 사이에 동기화된다. 따라서 훅 명령은 **OS 중립 경로**(`~/.claude/usage-monitor/hook`)와 두 OS에서 모두 도는 셸 형태로 써야 하며, 감싸기(wrapping)는 설계가 아니라 필수다 |
 | 어느 Claude Code가 훅을 돌리는가 | "Claude Code"는 CLI(`claude` 명령)를 뜻한다. 터미널 CLI는 statusline을 확실히 실행한다. 데스크톱 앱의 Code 탭과 IDE 확장은 같은 CLI 엔진을 쓰고 로그인 파일도 공유하지만, statusline 명령을 실행하는지는 **M1에서 실측**한다 (미검증). 채팅 전용 Claude 데스크톱 앱은 Claude Code가 아니며 로컬에 아무 값도 남기지 않는다 |
-| 읽기 | 앱은 `status.json` 파일을 감시(file watch)한다. 네트워크 호출 없음 |
+| 읽기 | 앱이 2초마다 `status.json`을 읽고, 값이 바뀌었을 때만 창에 보낸다. 파일 감시 라이브러리 대신 폴링을 쓴 이유는 의존성이 줄고 동작이 단순하기 때문이다 (R6) |
+| 오래됨 판정 | 파일 수정 시각이 **5분**을 넘으면 `stale`. Claude Code 세션이 닫히면 갱신이 멈춘다 |
 | 한계 | Claude Code 세션이 없으면 갱신되지 않는다 → `stale` 상태로 마지막 값 + 경과 시간을 보여 준다. 웹·데스크톱 앱만 쓴 사용량은 다음 Claude Code 세션 때 반영된다 (한도는 계정 단위로 합산되므로 값 자체는 정확하다) |
 
 **2순위: `/api/oauth/usage` 조회 (비공식 · 옵트인)**
@@ -163,7 +164,8 @@ flowchart LR
 
 | 상태 | 원인 | 창에 보이는 것 | 사용자가 할 일 |
 |---|---|---|---|
-| `no_source` | statusline 훅 미설치, 옵트인도 꺼짐 | "설정에서 연결 방법을 고르세요" | 훅 설치 동의 또는 옵트인 |
+| `no_source` | statusline 훅 미설치, 옵트인도 꺼짐 | "우클릭 → Claude 한도 연결" | 메뉴에서 연결 |
+| `waiting` | 훅은 설치됐으나 아직 값이 없음 (Claude Code 세션 미실행, 또는 첫 응답 전) | "Claude Code 세션을 한 번 여세요" | 터미널에서 `claude` 실행 |
 | `stale` | 훅은 있으나 Claude Code 세션이 없어 갱신 안 됨 | 마지막 값(회색) + "38분 전 값" | 없음 (다음 세션에 갱신) |
 | `no_token` | (옵트인) Claude Code 로그인 기록 없음 | 한도 영역에 "Claude Code 로그인 필요" | Claude Code 실행 후 `/login` |
 | `auth_expired` | 토큰 만료 | 마지막 값(회색) + "로그인 갱신 필요" | Claude Code를 한 번 실행 |

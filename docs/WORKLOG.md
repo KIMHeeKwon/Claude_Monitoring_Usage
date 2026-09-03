@@ -80,7 +80,36 @@
 
 **남은 미해결**
 - 위 육안 확인 2건, 다른 PC 설치 검증
-- M1(statusline 훅) 이전까지 한도 값은 예시 값 모드로만 확인 가능
+
+## 2026-09-03 — M1: statusline 훅으로 한도 표시 (세션 1 연장)
+
+**목표**: 공식 경로(Claude Code statusline JSON)로 5시간·주간·Opus 한도를 창에 띄운다.
+
+**산출물**
+- `src-tauri/hook/hook.sh` — stdin의 statusline JSON을 `status.json`에 저장하고, **기존 statusline 명령을
+  그대로 이어서 실행**한다(감싸기). 사용자의 기존 표시가 유지된다.
+- `src-tauri/src/usage.rs` — 훅 설치·제거(설정 백업 + 원래 명령 복원), 2초 폴링, 계약 정규화, 상태 판정.
+  `CLAUDE_CONFIG_DIR`를 존중한다.
+- 메뉴에 "Claude 한도 연결 (statusline 훅)" 토글. 사용자 설정 파일을 고치는 동작이므로 명시적 선택.
+- `src/app.js` — 상태 문구에 `waiting` 추가, 값이 없을 때 `%` 기호도 숨김.
+
+**검증 (2026-09-03)**
+- **자동 테스트 2건 통과**: ① 정규화 — Pro(5시간 창만)·Max(세 창)·`rate_limits` 없음·형식 변경·JSON 아님을
+  각각 올바른 상태로 판정. ② 감싸기 — 기존 statusline 보존, 다른 설정 불변, 백업 생성, 두 번 설치해도 원래
+  명령 유지, 제거 시 원상 복구.
+- 훅 스크립트를 표본 JSON으로 직접 실행해 `status.json` 생성 확인.
+- 화면: 상태 6종(정상·주의·위험·끊김·대기·미연결)을 미리보기로 확인. 문구·색·Opus 행 숨김 모두 정상.
+
+**미검증 (사용자 확인 필요)**
+- **실제 Claude Code 세션에서 훅이 도는지, `rate_limits`가 실제로 오는지.** statusline은 대화형 세션에서만
+  실행되며, 이 환경에서는 확인할 수 없었다(`claude -p`는 statusline을 실행하지 않고, 설치된 CLI 2.1.247은
+  현재 모델을 지원하지 않아 응답 자체가 실패했다).
+- 이 PC의 `settings.json`은 **실측을 위해 이미 훅으로 감싸 두었다**. 백업은
+  `~/.claude/settings.json.bak-20260903-101508`. 되돌리려면 앱 메뉴에서 연결을 끄면 된다.
+
+**남은 미해결**
+- 위 미검증 2건, 다른 PC 설치 검증
+- M1b(옵트인 조회), M2(GPU), M3(macOS 빌드)
 - statusline 훅이 이 계정에서 `rate_limits`를 실제로 내보내는지 — 이 PC에서 훅 1회 실행으로 확정 (M1 첫 작업)
 - `/api/oauth/usage` 응답 형식의 직접 실측 (2차 자료 기반 — 옵트인 구현 전 curl 1회)
 - macOS GPU(IOKit) 경로 미검증 — MacBook에서 M2 때 확인
