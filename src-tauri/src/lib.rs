@@ -46,7 +46,7 @@ pub fn run() {
                 .tooltip("Claude Usage")
                 .menu(&menu::build(app.handle(), &s, true)?)
                 .show_menu_on_left_click(false)
-                .on_menu_event(|app, e| menu::handle(app, e))
+                // 메뉴 선택은 아래 앱 수준 핸들러 한 곳에서만 처리한다 (여기에도 달면 두 번 처리된다).
                 .on_tray_icon_event(|tray, event| {
                     if let tauri::tray::TrayIconEvent::Click { button: tauri::tray::MouseButton::Left, .. } = event {
                         menu::show_main(tray.app_handle());

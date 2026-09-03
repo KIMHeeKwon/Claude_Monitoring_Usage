@@ -2,6 +2,8 @@
 //! 메뉴 id 규칙: "layout:2a" / "theme:dark" / "alarm:pulse" / "demo" / "show" / "hide" / "quit".
 
 use crate::settings::{self, Settings, Store, LAYOUTS};
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 use tauri::{
     menu::{CheckMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu},
     AppHandle, Emitter, LogicalSize, Manager, Runtime,
@@ -45,9 +47,30 @@ pub fn build<R: Runtime>(app: &AppHandle<R>, s: &Settings, for_tray: bool) -> ta
     Menu::with_items(app, &[&layout, &scale, &theme, &sep, &hook, &oauth, &pulse, &demo, &sep, &toggle, &sep, &quit])
 }
 
+/// 같은 선택이 이 시간 안에 다시 오면 중복으로 본다.
+const DEDUP: Duration = Duration::from_millis(400);
+static LAST: Mutex<Option<(String, Instant)>> = Mutex::new(None);
+
+fn is_duplicate(id: &str) -> bool {
+    let mut last = match LAST.lock() {
+        Ok(l) => l,
+        Err(e) => e.into_inner(),
+    };
+    if let Some((prev, at)) = last.as_ref() {
+        if prev == id && at.elapsed() < DEDUP {
+            return true;
+        }
+    }
+    *last = Some((id.to_string(), Instant::now()));
+    false
+}
+
 /// 메뉴 선택 처리: 설정 갱신 → 저장 → 창 크기 → 창에 통보 → 트레이 메뉴 체크 상태 갱신.
 pub fn handle<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
     let id = event.id().as_ref().to_string();
+    if is_duplicate(&id) {
+        return;
+    }
     match id.as_str() {
         "quit" => { app.exit(0); return; }
         "show" => { show_main(app); return; }
