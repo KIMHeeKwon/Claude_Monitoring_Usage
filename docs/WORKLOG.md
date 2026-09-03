@@ -31,8 +31,12 @@
 
 **현재 진행도**: 설계 문서 v0.1 완료(조사 반영). 코드 0줄.
 
+**사용자 답변으로 확정 (2026-09-03, 같은 날 후반)**
+- D6 구독 한도 정의(Pro 감안) · D7 Max+Pro · D8 **Tauri v2** · D9 statusline 기본 + **저장된 토큰 읽기 옵트인**.
+  P0 미결 0건. "Claude Code"는 CLI를 뜻함을 확인. 사용자 `settings.json`에 기존 statusline(orca, Mac 경로)이
+  있고 2대 동기화됨 → 훅은 감싸기 + OS 중립 경로 필수 (ARCHITECTURE §5.1 실측 기재).
+
 **남은 미해결**
-- Q1~Q4 사용자 답변 (특히 Q2 동료의 Claude Code 사용 여부, Q3 Rust 도입 여부, Q4 옵트인 여부)
 - statusline 훅이 이 계정에서 `rate_limits`를 실제로 내보내는지 — 이 PC에서 훅 1회 실행으로 확정 (M1 첫 작업)
 - `/api/oauth/usage` 응답 형식의 직접 실측 (2차 자료 기반 — 옵트인 구현 전 curl 1회)
 - macOS GPU(IOKit) 경로 미검증 — MacBook에서 M2 때 확인
