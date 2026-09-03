@@ -78,9 +78,9 @@ body { padding: var(--pad); font-family: var(--font); color: var(--ink); }
 /* ---- 창 판(panel): 블루프린트 프레임 + 네 귀 등록 마크 ---- */
 /* overflow는 visible로 둔다 — 등록 마크가 창 밖 -6px로 튀어나오므로 자르면 안 된다. */
 .panel { position: relative; background: var(--ground); border: 1px solid var(--border); }
-:root[data-state="warn"] .panel { border-color: var(--warn); }
-:root[data-state="crit"] .panel { border-color: var(--crit); }
-:root[data-state="stale"] .panel { border-style: dashed; }
+:root[data-state="warn"] .panel, .panel[data-st="warn"] { border-color: var(--warn); }
+:root[data-state="crit"] .panel, .panel[data-st="crit"] { border-color: var(--crit); }
+:root[data-state="stale"] .panel, .panel[data-st="stale"] { border-style: dashed; }
 .corner { position: absolute; width: 11px; height: 11px; pointer-events: none;
   background: linear-gradient(var(--mark),var(--mark)) center/1px 100% no-repeat,
               linear-gradient(var(--mark),var(--mark)) center/100% 1px no-repeat; }
@@ -127,9 +127,11 @@ svg { display: block; }
   background: radial-gradient(circle at 5.5px 5.5px, var(--state) 2.1px, transparent 2.4px) 0 0/11px 11px; }
 
 /* 끊김·오류 문구는 값보다 눈에 띄어야 한다 — 값이 멈춘 것을 알아채는 것이 그 상태의 요점이다. */
-:root[data-state="stale"] .note { font-size: 11.5px; font-weight: 600; letter-spacing: -.01em; color: var(--stale); }
-:root[data-state="stale"] .l2a .rs,
-:root[data-state="stale"] .l2d .rs { font-size: 12px; }
+:root[data-state="stale"] .note, .panel[data-st="stale"] .note {
+  font-size: 11.5px; font-weight: 600; letter-spacing: -.01em; color: var(--stale); text-align: center; }
+.stale-tag { color: var(--crit); font-weight: 700; margin-right: 7px; }
+:root[data-state="stale"] .l2a .rs, .panel[data-st="stale"].l2a .rs,
+:root[data-state="stale"] .l2d .rs, .panel[data-st="stale"].l2d .rs { font-size: 12px; }
 
 [hidden] { display: none !important; }
 :focus-visible { outline: 2px solid var(--line1); outline-offset: 2px; }

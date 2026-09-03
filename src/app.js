@@ -32,7 +32,10 @@ const STATUS_MSG = {
   rate_limited: "5분 뒤 재시도",
   shape_changed: "조회 불가 — 앱 업데이트 필요",
 };
-function ageMsg(u) { const m = Math.max(1, Math.round((Date.now() - new Date(u.fetched_at)) / 60000)); return `끊김 ${m}분 전 값`; }
+function ageMsg(u) {
+  const m = Math.max(1, Math.round((Date.now() - new Date(u.fetched_at)) / 60000));
+  return `<b class="stale-tag">끊김</b>${m}분 전 값`;   // 태그는 CSS로 빨강·굵게·간격
+}
 
 function derive() {
   const u = state.usage, s = state.sys;
@@ -207,6 +210,7 @@ function render() {
   const d = derive();
   const panel = root.firstElementChild;
   document.documentElement.dataset.state = d.rootState;
+  panel.dataset.st = d.rootState;   // 판 단위로도 심는다 (확인용 파일에서 카드마다 상태가 다르다)
   panel.classList.toggle("no-gpu", !d.hasGpu);
   panel.classList.toggle("no-opus", !d.hasOpus);
   panel.querySelectorAll("[data-gpu]").forEach((el) => (el.hidden = !d.hasGpu));
@@ -215,7 +219,8 @@ function render() {
     const v = d[el.dataset.t];
     let s = v == null ? "–" : String(v) + (v === "–" ? "" : el.dataset.suffix || "");
     if (el.dataset.upper !== undefined) s = s.toUpperCase();
-    el.textContent = s;
+    const k = el.dataset.t;
+    if (k === "reset" || k === "resetShort") el.innerHTML = s; else el.textContent = s;
   });
   panel.querySelectorAll("[data-pct]").forEach((el) => (el.hidden = d[el.dataset.pct] == null));
   const pct = (k) => (d[k] == null ? 0 : d[k]);
