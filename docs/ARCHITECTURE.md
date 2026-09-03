@@ -124,6 +124,9 @@ flowchart LR
 | 어느 Claude Code가 훅을 돌리는가 | "Claude Code"는 CLI(`claude` 명령)를 뜻한다. 터미널 CLI는 statusline을 확실히 실행한다. 데스크톱 앱의 Code 탭과 IDE 확장은 같은 CLI 엔진을 쓰고 로그인 파일도 공유하지만, statusline 명령을 실행하는지는 **M1에서 실측**한다 (미검증). 채팅 전용 Claude 데스크톱 앱은 Claude Code가 아니며 로컬에 아무 값도 남기지 않는다 |
 | 읽기 | 앱이 2초마다 `status.json`을 읽고, 값이 바뀌었을 때만 창에 보낸다. 파일 감시 라이브러리 대신 폴링을 쓴 이유는 의존성이 줄고 동작이 단순하기 때문이다 (R6) |
 | 오래됨 판정 | 파일 수정 시각이 **5분**을 넘으면 `stale`. Claude Code 세션이 닫히면 갱신이 멈춘다 |
+| **실측 (2026-09-03, 이 PC · Claude Code 2.1.259)** | 훅이 실제로 실행되어 `rate_limits`가 들어왔다: `five_hour{used_percentage:33, resets_at:1788408000}`, `seven_day{used_percentage:8, ...}`. `resets_at`은 **epoch 초**이고 필드명은 문서와 같다. `seven_day_opus`는 **오지 않았다** — Opus 미사용 계정에서는 창 자체가 없으므로 행 숨김 처리가 실제로 필요하다. 첫 실행 직후에는 파일이 생기지 않았고 세션이 응답을 한 번 낸 뒤 생겼다(공식 문서의 "첫 API 응답 이후"와 일치) |
+| 같은 파일의 다른 필드 (M5 후보) | `cost{total_cost_usd, total_duration_ms, total_lines_added/removed}`, `context_window{context_window_size, used_percentage}`, `model{id, display_name}`, `effort`, `fast_mode`, `version`. **비용을 로컬 기록 파싱 없이 얻을 수 있는 경로**이므로 §5.2를 대체할 수 있다 (단 현재 세션 누계이지 계정 누계가 아니다) |
+| 개인정보 주의 | 이 파일에는 `cwd`·`transcript_path`·`session_id`·`workspace`가 들어 있다. 앱은 이 파일을 **읽기만** 하고 어디에도 보내지 않으며, 저장소에 커밋하지 않는다 |
 | 한계 | Claude Code 세션이 없으면 갱신되지 않는다 → `stale` 상태로 마지막 값 + 경과 시간을 보여 준다. 웹·데스크톱 앱만 쓴 사용량은 다음 Claude Code 세션 때 반영된다 (한도는 계정 단위로 합산되므로 값 자체는 정확하다) |
 
 **2순위: `/api/oauth/usage` 조회 (비공식 · 옵트인)**
