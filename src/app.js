@@ -32,7 +32,7 @@ const STATUS_MSG = {
   rate_limited: "5분 뒤 재시도",
   shape_changed: "조회 불가 — 앱 업데이트 필요",
 };
-function ageMsg(u) { const m = Math.max(1, Math.round((Date.now() - new Date(u.fetched_at)) / 60000)); return `${m}분 전 값`; }
+function ageMsg(u) { const m = Math.max(1, Math.round((Date.now() - new Date(u.fetched_at)) / 60000)); return `끊김 ${m}분 전 값`; }
 
 function derive() {
   const u = state.usage, s = state.sys;
