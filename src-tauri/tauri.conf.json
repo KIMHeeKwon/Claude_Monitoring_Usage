@@ -12,12 +12,15 @@
       {
         "label": "main",
         "title": "Claude Usage",
-        "width": 260,
-        "height": 108,
+        "width": 548,
+        "height": 148,
         "resizable": false,
         "decorations": false,
+        "transparent": true,
+        "shadow": false,
         "alwaysOnTop": true,
         "skipTaskbar": true,
+        "visible": false,
         "x": 40,
         "y": 40
       }

@@ -19,3 +19,6 @@ Thumbs.db
 
 # task-local scratch (G5 임시 파일은 커밋하지 않는다)
 implementation-notes.md
+
+# 화면 검증용 미리보기 (생성물)
+src/preview-*.html
