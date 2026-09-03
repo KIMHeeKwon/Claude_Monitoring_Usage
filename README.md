@@ -7,6 +7,11 @@ Windows와 macOS에서 **내 Claude 구독 한도(5시간 창·주간)** 와 **�
 > 설정 메뉴에서 선택, 다크·라이트 테마, Windows 설치 파일. 한도 표시(M1), GPU(M2), macOS 빌드(M3)는
 > 아직입니다. 설계는 [[docs/ARCHITECTURE]], 화면 사양은 `Design/design_handoff_usage_monitor_widget/README.md` 참조.
 
+## 쓰는 법
+
+**동료에게는 [[docs/USAGE|사용 안내서]]를 전달하십시오.** 설치, 화면 읽는 법, 메뉴, 문제 해결이 들어 있습니다.
+아래는 요약입니다.
+
 ## 창 조작
 
 - **끌기**: 창 왼쪽 위(라벨이 있는 영역)를 잡고 끕니다. 위치는 종료 후에도 유지됩니다.
