@@ -67,7 +67,7 @@ function derive() {
     cpu: s ? Math.round(s.cpu_pct) : null, mem: memPct,
     memGb: s ? `${s.mem.used_gb.toFixed(1)}GB` : "–",
     gpu: s && s.gpu ? Math.round(s.gpu.util_pct) : null,
-    vram: s && s.gpu && s.gpu.mem_used_gb != null ? `${s.gpu.mem_used_gb.toFixed(1)}GB` : "",
+    vram: s && s.gpu && s.gpu.mem_used_gb != null ? `${s.gpu.mem_used_gb.toFixed(1)}GB` : "",   // NVIDIA가 아니면 빈 값
     gpuName: s && s.gpu ? s.gpu.name : "",
     hasGpu: !!(s && s.gpu), hasOpus: opus != null,
     stale: u ? ["stale", "unreachable", "rate_limited", "auth_expired"].includes(u.status) : false,

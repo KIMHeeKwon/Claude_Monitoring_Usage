@@ -24,3 +24,7 @@ ureq = "3"
 # 없는 PC에서도 앱은 그대로 돌고 GPU 행만 숨는다. macOS에는 NVIDIA가 없으므로 뺀다.
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 nvml-wrapper = "0.11"
+
+# GPU 사용률을 작업 관리자와 같은 방식(성능 카운터)으로 읽는다. 제조사를 가리지 않는다.
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58", features = ["Win32_System_Performance", "Win32_Foundation"] }
