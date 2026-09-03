@@ -16,14 +16,18 @@ pub struct Settings {
     pub alarm: String,  // "pulse" | "off"
     pub demo: bool,     // 예시 값 표시 (검증용)
     pub scale: f64,     // 화면 배율 1.0 / 1.25 / 1.5 / 1.75
-    pub oauth: bool,    // 모델별 한도 조회 (비공식 경로, 기본 꺼짐 — DECISIONS D9)
+    pub oauth: bool,    // 실시간 조회 (비공식 경로, 기본 켜짐 — DECISIONS D19)
     pub pos: Option<(i32, i32)>, // 물리 픽셀 좌표
+    pub v: u32,         // 설정 버전. 새 기본값을 기존 사용자에게 한 번만 적용하는 데 쓴다
 }
+
+/// 현재 설정 버전. 올릴 때마다 `migrate()`에 그 단계의 처리를 적는다.
+pub const VERSION: u32 = 1;
 
 impl Default for Settings {
     fn default() -> Self {
         Self { layout: "2a".into(), theme: "system".into(), alarm: "pulse".into(), demo: false,
-               scale: 1.25, oauth: false, pos: None }
+               scale: 1.25, oauth: true, pos: None, v: VERSION }
     }
 }
 
@@ -50,11 +54,26 @@ fn path<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
     app.path().app_config_dir().ok().map(|d| d.join("settings.json"))
 }
 
+/// 이미 저장된 설정을 현재 버전으로 올린다. 바뀌었으면 `true`.
+fn migrate(s: &mut Settings) -> bool {
+    if s.v >= VERSION {
+        return false;
+    }
+    // v1: 실시간 조회를 기본으로 켠다 (2026-09-03 사용자 결정). 이 값이 없으면 모델별 한도가 보이지 않는다.
+    s.oauth = true;
+    s.v = VERSION;
+    true
+}
+
 pub fn load<R: Runtime>(app: &AppHandle<R>) -> Settings {
-    path(app)
+    let mut s: Settings = path(app)
         .and_then(|p| fs::read_to_string(p).ok())
         .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default()
+        .unwrap_or_default();
+    if migrate(&mut s) {
+        save_any(app, &s);
+    }
+    s
 }
 
 /// 설정을 디스크에 쓴다. 실패해도 앱은 계속 돈다 (다음 실행에서 기본값으로 시작).

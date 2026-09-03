@@ -29,8 +29,9 @@ pub fn build<R: Runtime>(app: &AppHandle<R>, s: &Settings, for_tray: bool) -> ta
 
     // Claude 한도 연결 — 사용자의 settings.json을 고치는 동작이므로 명시적으로 고르게 한다.
     let hook = check("hook".into(), "Claude 한도 연결 (statusline 훅)", crate::usage::is_installed())?;
-    // 모델별 창(Fable·Opus 등)은 이 경로에만 있다. 약관상 권장되지 않는 비공식 경로다 (DECISIONS D9).
-    let oauth = check("oauth".into(), "모델별 한도 표시 (비공식 조회 · 약관 주의)", s.oauth)?;
+    // 3분마다 직접 조회한다. Claude Code를 쓰지 않아도 값이 갱신되고, 모델별 창(Fable 등)도 이 경로에만 있다.
+    // Anthropic 약관이 권장하지 않는 비공식 경로다 (DECISIONS D19 — 사용자가 기본 켜짐으로 결정).
+    let oauth = check("oauth".into(), "실시간 조회", s.oauth)?;
     let pulse = check("alarm:pulse".into(), "위험(90%↑) 시 숫자 깜빡임", s.alarm == "pulse")?;
     let demo = check("demo".into(), "예시 값 표시 (검증용)", s.demo)?;
     let sep = PredefinedMenuItem::separator(app)?;
