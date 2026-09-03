@@ -19,3 +19,8 @@ serde_json = { version = "1", features = ["preserve_order"] }
 sysinfo = "0.39"
 chrono = "0.4"
 ureq = "3"
+
+# GPU: NVIDIA 관리 라이브러리는 드라이버가 깔아 두는 DLL을 실행 중에 찾아 연다.
+# 없는 PC에서도 앱은 그대로 돌고 GPU 행만 숨는다. macOS에는 NVIDIA가 없으므로 뺀다.
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+nvml-wrapper = "0.11"

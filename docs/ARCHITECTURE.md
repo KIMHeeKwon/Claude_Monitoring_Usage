@@ -168,10 +168,12 @@ flowchart LR
 |---|---|---|---|
 | CPU % | `sysinfo` 크레이트 | `sysinfo` | 두 OS 공통, 권한 불필요 |
 | 메모리 | `sysinfo` | `sysinfo` | 사용/전체 GB |
-| GPU 사용률 | 1순위 NVML(`nvml-wrapper`) — NVIDIA만. 2순위 PDH `\GPU Engine(*)\Utilization Percentage` 합산 — 제조사 무관 | Apple Silicon: IOKit `IOAccelerator` `PerformanceStatistics`의 `Device Utilization %` (sudo 불필요). Intel Mac: 같은 경로, 미검증 | 어느 것도 안 되면 `gpu: null`로 행 자체를 숨긴다 |
-| GPU 메모리 | NVML | Apple Silicon은 통합 메모리라 별도 값 없음 → 표시 생략 | |
+| GPU 사용률 | **NVML 구현 완료** (`nvml-wrapper`, 드라이버가 설치하는 `nvml.dll`을 실행 중에 연다). PDH 대체 경로(제조사 무관)는 **미구현** — NVIDIA가 없는 PC에서는 행이 숨는다 | **미구현** — M3에서 실기기로. IOKit `IOAccelerator`의 `PerformanceStatistics` → `Device Utilization %` (sudo 불필요) | 어느 것도 안 되면 `gpu: null`로 행 자체를 숨긴다 |
+| GPU 메모리 | NVML의 `memory_info()` | Apple Silicon은 통합 메모리라 별도 값 없음 → 표시 생략 | |
+| **실측 (2026-09-03, 이 PC)** | RTX 4090에서 이름·사용률·메모리를 모두 읽었다: `NVIDIA GeForce RTX 4090 · 49% · 1.9/24.0 GB`. NVML 핸들은 한 번 열어 재사용하고 이름은 최초 1회만 읽는다 | | |
 
-샘플링 주기 1~2초. 앱 자체의 CPU 점유가 1%를 넘으면 주기를 늘린다 (측정 항목, M0에서 실측).
+샘플링 주기 1초. **실측 (2026-09-03, 24코어 PC, GPU 포함 상태)**: 앱 CPU 점유 평균 0.03%, 최대 0.13%,
+메모리 약 68MB. 목표(1% 이하)를 크게 밑돌므로 주기를 늘릴 이유가 없다.
 
 ## 6. 실패 상태와 표시 규칙
 

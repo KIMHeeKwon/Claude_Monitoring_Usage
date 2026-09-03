@@ -1,3 +1,4 @@
+mod gpu;
 mod menu;
 mod oauth;
 mod settings;
