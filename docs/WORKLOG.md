@@ -36,7 +36,27 @@
   P0 미결 0건. "Claude Code"는 CLI를 뜻함을 확인. 사용자 `settings.json`에 기존 statusline(orca, Mac 경로)이
   있고 2대 동기화됨 → 훅은 감싸기 + OS 중립 경로 필수 (ARCHITECTURE §5.1 실측 기재).
 
+## 2026-09-03 — M0 관통 골격 (세션 1 후반)
+
+**목표**: Tauri v2로 항상-위 창 + 트레이 + CPU/메모리 표시, Windows 설치 파일까지 관통.
+
+**결정사항 / 이탈**: NSIS currentUser 설치 파일 채택(관리자 권한 불필요), 프론트엔드 빌드 도구 없음(정적 HTML +
+`withGlobalTauri`). 상세는 `implementation-notes.md` Deviations.
+
+**산출물**
+- `src-tauri/` (lib.rs 트레이·창 이벤트, sysmon.rs 1초 샘플링 → `sys:update`), `src/index.html` 임시 화면, `README.md`
+- 설치 파일 `src-tauri/target/release/bundle/nsis/Claude Usage_0.0.1_x64-setup.exe` — **1.9MB** (실행 파일 8.9MB)
+
+**실측 (2026-09-03, 이 PC)**
+- 환경 구축: rustup(winget) + stable 1.98 + MSVC Build Tools 14.44 + Windows SDK 10.0.26100. Build Tools 약 15분
+- `cargo build` debug 2분 42초, 경고 0. debug·release 실행 파일 모두 `timeout`으로 6~8초 상주 확인 (크래시 없음)
+- **화면에 숫자가 그려지는지는 미확인** — Claude가 화면을 볼 수 없어 사용자 육안 확인 대기
+
+**현재 진행도**: M0 산출물 완료, 육안 검증 대기. 다른 PC 설치 검증(M0 통과 기준)은 미실시.
+
 **남은 미해결**
+- M0 육안 확인 (CPU·메모리 값 갱신, 창 드래그, 트레이 메뉴) 및 다른 Windows PC 설치 검증
+- 디자인 인계 폴더(`design_handoff_usage_monitor_widget`)가 아직 작업 폴더에 없음 — 경로 확인 후 화면 반영
 - statusline 훅이 이 계정에서 `rate_limits`를 실제로 내보내는지 — 이 PC에서 훅 1회 실행으로 확정 (M1 첫 작업)
 - `/api/oauth/usage` 응답 형식의 직접 실측 (2차 자료 기반 — 옵트인 구현 전 curl 1회)
 - macOS GPU(IOKit) 경로 미검증 — MacBook에서 M2 때 확인
