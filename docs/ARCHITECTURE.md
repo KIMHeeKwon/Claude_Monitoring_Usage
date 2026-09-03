@@ -122,6 +122,7 @@ flowchart LR
 |---|---|
 | 원리 | Claude Code는 세션 중 `settings.json`의 `statusLine.command`를 주기적으로 실행하며 표준 입력으로 JSON을 준다. 그 안의 `rate_limits`가 `/usage`와 같은 값이다 (공식 문서 code.claude.com/docs/en/statusline). Pro/Max 한정, 첫 응답 이후부터 |
 | 설치 | 앱이 최초 실행 시 작은 스크립트를 `~/.claude/usage-monitor/`에 놓고, `settings.json`에 statusline 항목을 추가하도록 **사용자 동의를 받아** 설정한다. 사용자가 이미 statusline을 쓰고 있으면 기존 명령을 감싸서(wrapping) 출력은 그대로 두고 JSON만 파일로 복사한다. **실측 (2026-09-03, 사용자 PC)**: `settings.json`에 이미 다른 도구(orca)의 statusline 항목이 있고, 그 경로가 MacBook 경로(`/Users/...`)다 — 즉 `settings.json`이 두 대 사이에 동기화된다. 따라서 훅 명령은 **OS 중립 경로**(`~/.claude/usage-monitor/hook`)와 두 OS에서 모두 도는 셸 형태로 써야 하며, 감싸기(wrapping)는 설계가 아니라 필수다 |
+| **실측 결론 (2026-09-03)** | **데스크톱 앱의 Code 탭은 statusline을 실행하지 않는다.** 훅 설치 후 이 세션이 여러 번 응답했지만 파일이 생기지 않았고, 사용자가 **터미널에서 `claude`를 실행했을 때만** 생겼다(10:29). 두 번째로 파일이 지워진 뒤에도 같은 결과였다. 따라서 statusline 경로만 쓰는 사용자는 **터미널 CLI를 쓰는 동안에만** 값이 갱신된다. 데스크톱 앱 위주로 쓰는 사람에게는 옵트인 조회가 사실상 필요하다 |
 | 어느 Claude Code가 훅을 돌리는가 | "Claude Code"는 CLI(`claude` 명령)를 뜻한다. 터미널 CLI는 statusline을 확실히 실행한다. 데스크톱 앱의 Code 탭과 IDE 확장은 같은 CLI 엔진을 쓰고 로그인 파일도 공유하지만, statusline 명령을 실행하는지는 **M1에서 실측**한다 (미검증). 채팅 전용 Claude 데스크톱 앱은 Claude Code가 아니며 로컬에 아무 값도 남기지 않는다 |
 | 읽기 | 앱이 2초마다 `status.json`을 읽고, 값이 바뀌었을 때만 창에 보낸다. 파일 감시 라이브러리 대신 폴링을 쓴 이유는 의존성이 줄고 동작이 단순하기 때문이다 (R6) |
 | 오래됨 판정 | 파일 수정 시각이 **5분**을 넘으면 `stale`. Claude Code 세션이 닫히면 갱신이 멈춘다 |

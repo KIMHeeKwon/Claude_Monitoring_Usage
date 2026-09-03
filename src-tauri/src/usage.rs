@@ -8,7 +8,7 @@
 //! 네트워크를 쓰지 않고 토큰도 읽지 않는다. 2순위 경로(옵트인 조회)는 M1b에서 붙인다.
 
 use chrono::{DateTime, TimeZone, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
     env, fs,
@@ -26,14 +26,14 @@ const HOOK_SH: &str = include_str!("../hook/hook.sh");
 const HOOK_MARK: &str = "usage-monitor/hook.sh";
 const HOOK_CMD: &str = r#"sh "$HOME/.claude/usage-monitor/hook.sh""#;
 
-#[derive(Serialize, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct Window {
     pub used_pct: f64,
     pub resets_at: Option<String>,
 }
 
 /// 모델별 주간 창. statusline에는 없고 옵트인 조회(`oauth.rs`)에서만 온다.
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ModelWindow {
     pub label: String,
     pub used_pct: f64,
@@ -136,7 +136,8 @@ pub fn uninstall() -> Result<(), String> {
     } else {
         root["statusLine"] = json!({ "type": "command", "command": prev });
     }
-    let _ = fs::remove_file(dir.join("status.json"));
+    // status.json은 지우지 않는다. 연결을 껐다 켜는 것만으로 마지막 값을 잃으면
+    // 다음 Claude Code 대화 전까지 화면이 비어 버린다 (2026-09-03 실제 발생).
     write_json(&sp, &root)
 }
 
@@ -295,6 +296,51 @@ mod tests {
     }
 }
 
+// ---------- 마지막 값 보관 ----------
+//
+// statusline 훅은 Claude Code 세션이 돌 때만 파일을 갱신한다. 그 파일이 없어지거나(연결을 껐다 켜는 등)
+// 앱을 새로 설치해도 마지막으로 본 값은 남아 있어야 한다. 없으면 화면이 통째로 비어 "못 가져온다"가 된다.
+
+#[derive(Serialize, Deserialize)]
+struct Cache {
+    fetched_at: Option<String>,
+    five_hour: Option<Window>,
+    seven_day: Option<Window>,
+    model_window: Option<ModelWindow>,
+}
+
+fn cache_path<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
+    app.path().app_config_dir().ok().map(|d| d.join("last-usage.json"))
+}
+
+fn save_cache<R: Runtime>(app: &AppHandle<R>, u: &Usage) {
+    let Some(p) = cache_path(app) else { return };
+    let c = Cache {
+        fetched_at: u.fetched_at.clone(),
+        five_hour: u.five_hour.clone(),
+        seven_day: u.seven_day.clone(),
+        model_window: u.model_window.clone(),
+    };
+    let _ = p.parent().map(fs::create_dir_all);
+    let _ = serde_json::to_string(&c).map(|j| fs::write(p, j));
+}
+
+/// 보관해 둔 값을 끊김 상태로 되살린다. 값이 하나도 없으면 `None`.
+fn load_cache<R: Runtime>(app: &AppHandle<R>, source: &'static str) -> Option<Usage> {
+    let c: Cache = cache_path(app)
+        .and_then(|p| fs::read_to_string(p).ok())
+        .and_then(|s| serde_json::from_str(&s).ok())?;
+    c.five_hour.as_ref()?;
+    Some(Usage {
+        source,
+        status: "stale",
+        fetched_at: c.fetched_at,
+        five_hour: c.five_hour,
+        seven_day: c.seven_day,
+        model_window: c.model_window,
+    })
+}
+
 // ---------- 감시 스레드 ----------
 
 /// 옵트인 조회 주기 — 토큰 단위로 제한이 걸리므로 180초 밑으로 내리지 않는다 (조사 §B.1.1).
@@ -318,11 +364,17 @@ pub fn spawn<R: Runtime>(app: AppHandle<R>) {
                 oauth_at = None;
             }
             // 옵트인 조회가 성공했으면 그 값을 쓴다 — 모델별 창은 이 경로에만 있다.
-            let u = match &oauth_val {
+            let mut u = match &oauth_val {
                 Some(o) if o.status == "ok" => o.clone(),
                 Some(o) => { let s = read(); if s.status == "ok" { s } else { o.clone() } }
                 None => read(),
             };
+            if u.status == "ok" {
+                save_cache(&app, &u);
+            } else if u.five_hour.is_none() {
+                // 값이 없는 상태(waiting·no_token·unreachable 등)면 마지막으로 본 값을 되살린다.
+                if let Some(c) = load_cache(&app, u.source) { u = c; }
+            }
             // 값이 바뀌었을 때만 보낸다 (창은 항상 마지막 값을 들고 있다).
             let key = serde_json::to_string(&u).unwrap_or_default();
             if key != last {
