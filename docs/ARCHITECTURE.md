@@ -88,7 +88,8 @@ flowchart LR
   "fetched_at": "2026-09-03T01:42:10Z",
   "five_hour":  { "used_pct": 42, "resets_at": "2026-09-03T02:54:00Z" },
   "seven_day":  { "used_pct": 18, "resets_at": "2026-09-08T00:00:00Z" },
-  "seven_day_opus": { "used_pct": 7, "resets_at": "2026-09-08T00:00:00Z" } // 없으면 null
+  // 모델별 주간 창. 옵트인 조회에만 있다. 라벨은 서버가 준 모델 이름("Fable", "Opus" 등).
+  "model_window": { "label": "Fable", "used_pct": 14, "resets_at": "2026-09-08T00:00:00Z" }
 }
 
 // sys:update — 1~2초마다
@@ -129,7 +130,15 @@ flowchart LR
 | 개인정보 주의 | 이 파일에는 `cwd`·`transcript_path`·`session_id`·`workspace`가 들어 있다. 앱은 이 파일을 **읽기만** 하고 어디에도 보내지 않으며, 저장소에 커밋하지 않는다 |
 | 한계 | Claude Code 세션이 없으면 갱신되지 않는다 → `stale` 상태로 마지막 값 + 경과 시간을 보여 준다. 웹·데스크톱 앱만 쓴 사용량은 다음 Claude Code 세션 때 반영된다 (한도는 계정 단위로 합산되므로 값 자체는 정확하다) |
 
-**2순위: `/api/oauth/usage` 조회 (비공식 · 옵트인)**
+**2순위: `/api/oauth/usage` 조회 (비공식 · 옵트인) — 모델별 창의 유일한 출처**
+
+> **실측 (2026-09-03, 이 계정 1회 호출)**: 응답의 레거시 필드(`seven_day_opus`, `seven_day_sonnet` 등)는
+> **전부 `null`** 이고, 모델별 창은 새 구조인 **`limits` 배열**에 들어 있다:
+> `{kind:"weekly_scoped", percent:14, resets_at:"...", scope:{model:{display_name:"Fable"}}}`.
+> `kind`는 `session`(5시간) · `weekly_all`(주간 전체) · `weekly_scoped`(모델별) 세 가지였다.
+> 따라서 파서는 **레거시 필드가 아니라 `limits`를 읽는다**. 모델 이름은 서버가 준 `display_name`을 그대로 쓰며,
+> 모델별 창이 여러 개면 **사용률이 가장 높은 것 하나만** 보여 준다 (창 공간이 하나뿐 — R6).
+> statusline 경로에는 이 정보가 없다 (공식 문서: `five_hour`/`seven_day`/`spend_limit`뿐).
 
 | 항목 | 설계 |
 |---|---|
@@ -169,7 +178,7 @@ flowchart LR
 |---|---|---|---|
 | `no_source` | statusline 훅 미설치, 옵트인도 꺼짐 | "우클릭 → Claude 한도 연결" | 메뉴에서 연결 |
 | `waiting` | 훅은 설치됐으나 아직 값이 없음 (Claude Code 세션 미실행, 또는 첫 응답 전) | "Claude Code 세션을 한 번 여세요" | 터미널에서 `claude` 실행 |
-| `stale` | 훅은 있으나 Claude Code 세션이 없어 갱신 안 됨 | 마지막 값(회색) + "38분 전 값" | 없음 (다음 세션에 갱신) |
+| `stale` | 훅은 있으나 Claude Code 세션이 없어 갱신 안 됨 | **한도 영역 전체를 회색으로** (숫자·막대·계기·도트·라벨) + 점선 테두리 + "38분 전 값"을 키워서 표시. **시스템 지표는 원래 색을 유지한다** — 그쪽은 살아 있기 때문이다 | 없음 (다음 세션에 갱신) |
 | `no_token` | (옵트인) Claude Code 로그인 기록 없음 | 한도 영역에 "Claude Code 로그인 필요" | Claude Code 실행 후 `/login` |
 | `auth_expired` | 토큰 만료 | 마지막 값(회색) + "로그인 갱신 필요" | Claude Code를 한 번 실행 |
 | `rate_limited` | 429 | 마지막 값 + "5분 뒤 재시도" | 없음 |

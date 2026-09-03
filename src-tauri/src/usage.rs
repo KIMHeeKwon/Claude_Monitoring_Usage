@@ -16,7 +16,7 @@ use std::{
     thread,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
-use tauri::{AppHandle, Emitter, Runtime};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 
 /// statusline 값이 이 시간보다 오래되면 `stale`. Claude Code 세션이 닫히면 갱신이 멈춘다.
 const STALE_AFTER_SECS: u64 = 300;
@@ -32,6 +32,14 @@ pub struct Window {
     pub resets_at: Option<String>,
 }
 
+/// 모델별 주간 창. statusline에는 없고 옵트인 조회(`oauth.rs`)에서만 온다.
+#[derive(Serialize, Clone)]
+pub struct ModelWindow {
+    pub label: String,
+    pub used_pct: f64,
+    pub resets_at: Option<String>,
+}
+
 #[derive(Serialize, Clone)]
 pub struct Usage {
     pub source: &'static str,
@@ -39,19 +47,22 @@ pub struct Usage {
     pub fetched_at: Option<String>,
     pub five_hour: Option<Window>,
     pub seven_day: Option<Window>,
-    pub seven_day_opus: Option<Window>,
+    pub model_window: Option<ModelWindow>,
 }
 
 impl Usage {
     fn empty(status: &'static str) -> Self {
-        Self { source: "statusline", status, fetched_at: None, five_hour: None, seven_day: None, seven_day_opus: None }
+        Self { source: "statusline", status, fetched_at: None, five_hour: None, seven_day: None, model_window: None }
+    }
+    pub fn empty_oauth(status: &'static str) -> Self {
+        Self { source: "oauth", ..Self::empty(status) }
     }
 }
 
 // ---------- 경로 ----------
 
 /// Claude Code 설정 폴더. `CLAUDE_CONFIG_DIR`가 있으면 그것을 따른다 (조사 §B.2: 도구는 이 변수를 존중해야 한다).
-fn claude_dir() -> Option<PathBuf> {
+pub fn claude_dir() -> Option<PathBuf> {
     if let Ok(d) = env::var("CLAUDE_CONFIG_DIR") {
         if !d.trim().is_empty() {
             return Some(PathBuf::from(d));
@@ -187,7 +198,8 @@ pub fn read() -> Usage {
         fetched_at,
         five_hour: five,
         seven_day: window(rl, "seven_day"),
-        seven_day_opus: window(rl, "seven_day_opus").or_else(|| window(rl, "seven_day_opus_limit")),
+        // statusline JSON에는 모델별 창이 없다 (공식 문서: five_hour / seven_day / spend_limit 뿐).
+        model_window: None,
     }
 }
 
@@ -228,7 +240,7 @@ mod tests {
         assert_eq!(u.source, "statusline");
         assert_eq!(u.five_hour.as_ref().unwrap().used_pct, 42.0);
         assert!(u.five_hour.as_ref().unwrap().resets_at.as_ref().unwrap().starts_with("2100-01-01"));
-        assert!(u.seven_day.is_none() && u.seven_day_opus.is_none());
+        assert!(u.seven_day.is_none() && u.model_window.is_none());
 
         // Max 계정: 세 창 모두
         stage(Some(r#"{"rate_limits":{"five_hour":{"used_percentage":74,"resets_at":4102444800},
@@ -236,7 +248,8 @@ mod tests {
              "seven_day_opus":{"used_percentage":12,"resets_at":4102444800}}}"#), true);
         let u = read();
         assert_eq!(u.seven_day.unwrap().used_pct, 47.0);
-        assert_eq!(u.seven_day_opus.unwrap().used_pct, 12.0);
+        // 모델별 창은 statusline에 없다 — 옵트인 경로(oauth.rs)의 테스트가 담당한다.
+        assert!(u.model_window.is_none());
 
         // rate_limits 자체가 없다 = Pro/Max가 아니거나 세션의 첫 응답 전
         stage(Some(r#"{"session_id":"x","model":{"id":"claude-opus-5"}}"#), true);
@@ -284,11 +297,32 @@ mod tests {
 
 // ---------- 감시 스레드 ----------
 
+/// 옵트인 조회 주기 — 토큰 단위로 제한이 걸리므로 180초 밑으로 내리지 않는다 (조사 §B.1.1).
+const OAUTH_EVERY: Duration = Duration::from_secs(180);
+
 pub fn spawn<R: Runtime>(app: AppHandle<R>) {
     thread::spawn(move || {
         let mut last = String::new();
+        let mut oauth_at: Option<std::time::Instant> = None;
+        let mut oauth_val: Option<Usage> = None;
         loop {
-            let u = read();
+            let want_oauth = app.state::<crate::settings::Store>().0.lock().map(|s| s.oauth).unwrap_or(false);
+            if want_oauth {
+                let due = oauth_at.map(|t| t.elapsed() >= OAUTH_EVERY).unwrap_or(true);
+                if due {
+                    oauth_at = Some(std::time::Instant::now());
+                    oauth_val = claude_dir().map(|d| crate::oauth::fetch(&d));
+                }
+            } else {
+                oauth_val = None;
+                oauth_at = None;
+            }
+            // 옵트인 조회가 성공했으면 그 값을 쓴다 — 모델별 창은 이 경로에만 있다.
+            let u = match &oauth_val {
+                Some(o) if o.status == "ok" => o.clone(),
+                Some(o) => { let s = read(); if s.status == "ok" { s } else { o.clone() } }
+                None => read(),
+            };
             // 값이 바뀌었을 때만 보낸다 (창은 항상 마지막 값을 들고 있다).
             let key = serde_json::to_string(&u).unwrap_or_default();
             if key != last {

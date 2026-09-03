@@ -15,12 +15,15 @@ pub struct Settings {
     pub theme: String,  // "dark" | "light" | "system"
     pub alarm: String,  // "pulse" | "off"
     pub demo: bool,     // 예시 값 표시 (검증용)
+    pub scale: f64,     // 화면 배율 1.0 / 1.25 / 1.5 / 1.75
+    pub oauth: bool,    // 모델별 한도 조회 (비공식 경로, 기본 꺼짐 — DECISIONS D9)
     pub pos: Option<(i32, i32)>, // 물리 픽셀 좌표
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Self { layout: "2a".into(), theme: "system".into(), alarm: "pulse".into(), demo: false, pos: None }
+        Self { layout: "2a".into(), theme: "system".into(), alarm: "pulse".into(), demo: false,
+               scale: 1.25, oauth: false, pos: None }
     }
 }
 
@@ -37,9 +40,10 @@ pub const LAYOUTS: [(&str, &str, f64, f64); 7] = [
     ("2g", "계기 + 시스템 링 3연", 556.0, 134.0),
 ];
 
-pub fn window_size(layout: &str) -> (f64, f64) {
+/// 창 크기 = 레이아웃 확정 크기 × 배율 + 등록 마크 여백. 배율은 창 안의 글씨까지 함께 키운다.
+pub fn window_size(layout: &str, scale: f64) -> (f64, f64) {
     let (_, _, w, h) = LAYOUTS.iter().find(|l| l.0 == layout).copied().unwrap_or(LAYOUTS[0]);
-    (w + 2.0 * PAD, h + 2.0 * PAD)
+    ((w + 2.0 * PAD) * scale, (h + 2.0 * PAD) * scale)
 }
 
 fn path<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {

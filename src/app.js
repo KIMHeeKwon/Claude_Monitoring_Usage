@@ -10,7 +10,7 @@ const state = {
   usage: null,                                  // usage:update 그대로
   sys: null,                                    // sys:update 그대로
   hist: { cpu: [], mem: [], gpu: [] },
-  ui: { layout: "2a", theme: "system", alarm: "pulse", demo: false },
+  ui: { layout: "2a", theme: "system", alarm: "pulse", demo: false, scale: 1.25 },
 };
 
 // ---------- 파생값 (렌더 시 계산, 상태로 두지 않음) ----------
@@ -39,7 +39,8 @@ function derive() {
   const hasVals = u && u.five_hour && ["ok", "stale", "unreachable", "rate_limited", "auth_expired"].includes(u.status);
   const five = hasVals ? Math.round(clamp(u.five_hour.used_pct)) : null;
   const week = hasVals && u.seven_day ? Math.round(clamp(u.seven_day.used_pct)) : null;
-  const opus = hasVals && u.seven_day_opus ? Math.round(clamp(u.seven_day_opus.used_pct)) : null;
+  const mw = hasVals && u.model_window ? u.model_window : null;
+  const opus = mw ? Math.round(clamp(mw.used_pct)) : null;
   let rootState = u && u.status === "ok" ? level(five) : hasVals ? "stale" : "none";
   if (rootState === "none") rootState = "ok";
   let reset = "", resetS = "";
@@ -56,7 +57,8 @@ function derive() {
     fiveT: five == null ? "–" : five, weekT: week == null ? "–" : week, opusT: opus == null ? "–" : opus,
     reset, resetShort: resetS,
     weekReset: wd == null ? "" : `${wd}일 후 초기화`, weekResetShort: wd == null ? "" : `${wd}일`,
-    weekOpus: `${week == null ? "–" : week + "%"} / ${opus == null ? "–" : opus + "%"}`,
+    weekOpus: (week == null ? "–" : week + "%") + (opus == null ? "" : " / " + opus + "%"),
+    mwLabel: mw ? mw.label : "",
     source: (u && u.source ? u.source : "").toUpperCase() || "—",
     clock: `${pad2(now.getHours())}:${pad2(now.getMinutes())}`,
     cpu: s ? Math.round(s.cpu_pct) : null, mem: memPct,
@@ -65,6 +67,7 @@ function derive() {
     vram: s && s.gpu && s.gpu.mem_used_gb != null ? `${s.gpu.mem_used_gb.toFixed(1)}GB` : "",
     gpuName: s && s.gpu ? s.gpu.name : "",
     hasGpu: !!(s && s.gpu), hasOpus: opus != null,
+    stale: u ? ["stale", "unreachable", "rate_limited", "auth_expired"].includes(u.status) : false,
   };
 }
 
@@ -97,7 +100,7 @@ const LAYOUTS = {
     <div class="c2">
       <div class="kv"><span>주간</span><b data-t="weekT" data-suffix="%"></b></div>
       <div class="bar" style="height:6px"><i data-w="week" data-lc="week"></i></div>
-      <div class="kv" data-opus><span>Opus</span><b data-t="opusT" data-suffix="%"></b></div>
+      <div class="kv" data-opus><span data-t="mwLabel"></span><b data-t="opusT" data-suffix="%"></b></div>
       <div class="bar" style="height:6px" data-opus><i data-w="opus" style="background:var(--line2)"></i></div>
       <div class="wr" data-t="weekReset"></div>
     </div>
@@ -110,7 +113,7 @@ const LAYOUTS = {
     <div class="body">
       <div class="gc">${gaugeS("five", "st")}<div class="num five-num" style="font-size:26px"><span data-t="fiveT"></span><span class="pct" data-pct="five">%</span></div><div class="lbl s">5H</div><div class="note" data-t="resetShort"></div></div>
       <div class="gc">${gaugeS("week")}<div class="num" style="font-size:26px"><span data-t="weekT"></span><span class="pct" data-pct="week">%</span></div><div class="lbl s">WEEK</div><div class="note" data-t="weekResetShort"></div></div>
-      <div class="gc" data-opus>${gaugeS("opus").replace('class="arc "', 'class="arc" style="stroke:var(--line2)"')}<div class="num" style="font-size:26px"><span data-t="opusT"></span><span class="pct" data-pct="opus">%</span></div><div class="lbl s">OPUS</div><div class="note" data-t="weekResetShort"></div></div>
+      <div class="gc" data-opus>${gaugeS("opus").replace('class="arc "', 'class="arc" style="stroke:var(--line2)"')}<div class="num" style="font-size:26px"><span data-t="opusT"></span><span class="pct" data-pct="opus">%</span></div><div class="lbl s" data-t="mwLabel" data-upper></div><div class="note" data-t="weekResetShort"></div></div>
       <div class="sys">${sysRow("cpu", "CPU", "cpu", 120, 18, false)}${sysRow("mem", "MEM", "mem", 120, 18, false)}${sysRow("gpu", "GPU", "gpu", 120, 18, false)}</div>
     </div>`,
 
@@ -130,7 +133,7 @@ const LAYOUTS = {
       <div class="big" data-tauri-drag-region>${num("acc")}</div>
       <div class="bar b6"><i class="st" data-w="five"></i></div>
       <div class="note rs" data-t="reset"></div>
-      <div class="kv"><span>주간 / Opus</span><b data-t="weekOpus"></b></div>
+      <div class="kv"><span>주간<span data-opus> / <span data-t="mwLabel"></span></span></span><b data-t="weekOpus"></b></div>
       <div class="bar b4"><i data-w="week" data-lc="week"></i></div>
     </div>
     <div class="c2">
@@ -159,7 +162,7 @@ const LAYOUTS = {
     <div class="c1 drag" data-tauri-drag-region>
       <div class="head" data-tauri-drag-region><span class="lbl" data-tauri-drag-region>5H LIMIT</span><span class="note" data-t="reset"></span></div>
       <div class="g" data-tauri-drag-region><span class="num five-num acc" style="font-size:40px"><span data-t="fiveT"></span><span class="pct" data-pct="five">%</span></span><div class="dots"><i data-w="five"></i></div></div>
-      <div class="foot"><span>주간 <b data-t="weekT" data-suffix="%"></b></span><span data-opus>Opus <b data-t="opusT" data-suffix="%"></b></span><span><span data-t="clock"></span> · <span data-t="source"></span></span></div>
+      <div class="foot"><span>주간 <b data-t="weekT" data-suffix="%"></b></span><span data-opus><span data-t="mwLabel"></span> <b data-t="opusT" data-suffix="%"></b></span><span><span data-t="clock"></span> · <span data-t="source"></span></span></div>
     </div>
     <div class="c2">
       <div class="r"><span class="lbl row">CPU</span><div class="bar"><i data-w="cpu"></i></div><span class="val" data-t="cpu" data-suffix="%"></span></div>
@@ -193,6 +196,7 @@ function mount() {
   root.innerHTML = `<div class="panel l${id}">${corners}${LAYOUTS[id]()}</div>`;
   mounted = id;
 }
+function applyScale() { document.documentElement.style.zoom = state.ui.scale || 1; }
 function applyTheme() {
   const t = state.ui.theme === "system" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : state.ui.theme;
   document.documentElement.dataset.theme = t;
@@ -209,13 +213,27 @@ function render() {
   panel.querySelectorAll("[data-opus]").forEach((el) => (el.hidden = !d.hasOpus));
   panel.querySelectorAll("[data-t]").forEach((el) => {
     const v = d[el.dataset.t];
-    el.textContent = v == null ? "–" : v + (v === "–" ? "" : el.dataset.suffix || "");
+    let s = v == null ? "–" : String(v) + (v === "–" ? "" : el.dataset.suffix || "");
+    if (el.dataset.upper !== undefined) s = s.toUpperCase();
+    el.textContent = s;
   });
   panel.querySelectorAll("[data-pct]").forEach((el) => (el.hidden = d[el.dataset.pct] == null));
   const pct = (k) => (d[k] == null ? 0 : d[k]);
   panel.querySelectorAll("[data-w]").forEach((el) => (el.style.width = pct(el.dataset.w) + "%"));
   panel.querySelectorAll("[data-hh]").forEach((el) => (el.style.height = pct(el.dataset.hh) + "%"));
-  panel.querySelectorAll("[data-lc]").forEach((el) => (el.style.background = levelColor(d[el.dataset.lc])));
+  const grey = d.stale ? "var(--stale)" : null;
+  panel.querySelectorAll("[data-lc]").forEach((el) => (el.style.background = grey || levelColor(d[el.dataset.lc])));
+  // 한도에 속한 값·막대·계기만 회색으로 바꾼다 (CPU·MEM·GPU는 살아 있으므로 건드리지 않는다).
+  const LIMIT_T = new Set(["fiveT", "weekT", "opusT", "weekOpus", "weekReset", "weekResetShort", "mwLabel"]);
+  panel.querySelectorAll("[data-t]").forEach((el) => {
+    if (LIMIT_T.has(el.dataset.t)) el.style.color = grey || "";
+  });
+  panel.querySelectorAll(".pct, .lbl.s").forEach((el) => (el.style.color = grey || ""));
+  panel.querySelectorAll('[data-w="week"],[data-w="opus"],[data-w="five"],[data-hh="week"],[data-hh="five"]')
+    .forEach((el) => (el.style.background = grey || ""));
+  panel.querySelectorAll('[data-arc^="five"],[data-arc^="week"],[data-arc^="opus"]')
+    .forEach((el) => (el.style.stroke = grey || ""));
+  panel.querySelectorAll(".dots > i").forEach((el) => (el.style.background = grey ? "radial-gradient(circle at 5.5px 5.5px, var(--stale) 2.1px, transparent 2.4px) 0 0/11px 11px" : ""));
   panel.querySelectorAll("[data-arc]").forEach((el) => {
     const [k, kind] = el.dataset.arc.split(":"), L = LEN[kind];
     el.setAttribute("stroke-dasharray", `${((L * pct(k)) / 100).toFixed(2)} ${L.toFixed(2)}`);
@@ -234,7 +252,7 @@ listen("sys:update", ({ payload: s }) => {
 });
 listen("usage:update", ({ payload: u }) => { if (!state.ui.demo) { state.usage = u; render(); } });
 listen("usage:error", ({ payload: msg }) => { state.err = String(msg); render(); });
-listen("ui:settings", ({ payload: ui }) => { Object.assign(state.ui, ui); applyTheme(); if (state.ui.demo) demoTick(); else if (state.usage && state.usage.source === "demo") state.usage = null; render(); });
+listen("ui:settings", ({ payload: ui }) => { Object.assign(state.ui, ui); applyTheme(); applyScale(); if (state.ui.demo) demoTick(); else if (state.usage && state.usage.source === "demo") state.usage = null; render(); });
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { applyTheme(); render(); });
 
 // 예시 값 (검증용, 메뉴에서 켬): README의 74 / 47 / 12 — 임계 색을 보려면 5H를 올린다
@@ -245,10 +263,10 @@ function demoTick() {
   state.usage = { source: "demo", status: "ok", fetched_at: new Date(t).toISOString(),
     five_hour: { used_pct: demoFive, resets_at: new Date(t + 45 * 60000).toISOString() },
     seven_day: { used_pct: 47, resets_at: new Date(t + 4 * 86400000).toISOString() },
-    seven_day_opus: { used_pct: 12, resets_at: new Date(t + 4 * 86400000).toISOString() } };
+    model_window: { label: "Fable", used_pct: 14, resets_at: new Date(t + 4 * 86400000).toISOString() } };
 }
 
 // 우클릭 → 네이티브 메뉴 (Rust가 띄움)
 document.addEventListener("contextmenu", (e) => { e.preventDefault(); invoke("show_menu"); });
 
-invoke("get_settings").then((ui) => { Object.assign(state.ui, ui); applyTheme(); if (state.ui.demo) demoTick(); render(); });
+invoke("get_settings").then((ui) => { Object.assign(state.ui, ui); applyTheme(); applyScale(); if (state.ui.demo) demoTick(); render(); });

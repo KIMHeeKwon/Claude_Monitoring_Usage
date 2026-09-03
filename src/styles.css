@@ -126,6 +126,11 @@ svg { display: block; }
 .dots > i { position: absolute; inset: 0; width: 0;
   background: radial-gradient(circle at 5.5px 5.5px, var(--state) 2.1px, transparent 2.4px) 0 0/11px 11px; }
 
+/* 끊김·오류 문구는 값보다 눈에 띄어야 한다 — 값이 멈춘 것을 알아채는 것이 그 상태의 요점이다. */
+:root[data-state="stale"] .note { font-size: 11.5px; font-weight: 600; letter-spacing: -.01em; color: var(--stale); }
+:root[data-state="stale"] .l2a .rs,
+:root[data-state="stale"] .l2d .rs { font-size: 12px; }
+
 [hidden] { display: none !important; }
 :focus-visible { outline: 2px solid var(--line1); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .bar > i, .vbar > i, .gauge .arc { transition: none; } }

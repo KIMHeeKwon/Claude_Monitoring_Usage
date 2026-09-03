@@ -1,4 +1,5 @@
 mod menu;
+mod oauth;
 mod settings;
 mod sysmon;
 mod usage;
@@ -32,7 +33,7 @@ pub fn run() {
 
             // 창: 저장된 레이아웃 크기·위치로 맞춘 뒤 표시 (tauri.conf.json의 visible=false).
             if let Some(w) = app.get_webview_window("main") {
-                let (width, height) = settings::window_size(&s.layout);
+                let (width, height) = settings::window_size(&s.layout, s.scale);
                 let _ = w.set_size(LogicalSize::new(width, height));
                 if let Some((x, y)) = s.pos { let _ = w.set_position(PhysicalPosition::new(x, y)); }
                 let _ = w.show();
