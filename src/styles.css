@@ -146,7 +146,7 @@ svg { display: block; }
 .l2a .g { display: flex; align-items: flex-end; justify-content: center; gap: 8px; margin-top: 2px; }
 .l2a .ov { position: absolute; left: 0; right: 0; top: 44px; text-align: center; }
 .l2a .ov .num { font-size: 30px; } .l2a .ov .pct { font-size: 12px; }
-.l2a .rs { margin-top: 4px; }
+.l2a .rs { margin-top: 4px; text-align: center; }   /* 계기와 함께 가운데 (2026-09-03) */
 .l2a .c2 { padding: 12px; display: grid; align-content: center; gap: 9px; border-right: 1px solid var(--divider); }
 .l2a .kv { display: flex; justify-content: space-between; align-items: baseline; font: 400 10.5px/1 var(--font); color: var(--m70); }
 .l2a .kv b { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink); }
