@@ -128,9 +128,11 @@ svg { display: block; }
 /* 끊김·오류 문구는 값보다 눈에 띄어야 한다 — 값이 멈춘 것을 알아채는 것이 그 상태의 요점이다. */
 :root[data-state="stale"] .note, .panel[data-st="stale"] .note {
   font-size: 11.5px; font-weight: 600; letter-spacing: -.01em; color: var(--stale); text-align: center; }
-.stale-tag { color: var(--crit); font-weight: 700; margin-right: 7px; }
+/* 끊김 태그는 윗줄에 따로 세운다 (B안, 2026-09-03 사용자 선택) */
+.stale-tag { display: block; color: var(--crit); font-weight: 700; margin: 0 0 2px; }
 :root[data-state="stale"] .l2a .rs, .panel[data-st="stale"].l2a .rs,
-:root[data-state="stale"] .l2d .rs, .panel[data-st="stale"].l2d .rs { font-size: 12px; }
+:root[data-state="stale"] .l2d .rs, .panel[data-st="stale"].l2d .rs {
+  font-size: 12px; margin-top: 6px; line-height: 1.35; }
 
 [hidden] { display: none !important; }
 :focus-visible { outline: 2px solid var(--line1); outline-offset: 2px; }
@@ -140,8 +142,8 @@ svg { display: block; }
 .l2a { width: 532px; height: 132px; display: grid; grid-template-columns: 168px 150px 1fr; }
 .l2a .c1 { position: relative; padding: 10px 12px 8px; border-right: 1px solid var(--divider); }
 .l2a .head { display: flex; align-items: center; justify-content: space-between; }
-.l2a .g { display: flex; align-items: flex-end; gap: 8px; margin-top: 2px; }
-.l2a .ov { position: absolute; left: 12px; top: 44px; width: 96px; text-align: center; }
+.l2a .g { display: flex; align-items: flex-end; justify-content: center; gap: 8px; margin-top: 2px; }
+.l2a .ov { position: absolute; left: 0; right: 0; top: 44px; text-align: center; }
 .l2a .ov .num { font-size: 30px; } .l2a .ov .pct { font-size: 12px; }
 .l2a .rs { margin-top: 4px; }
 .l2a .c2 { padding: 12px; display: grid; align-content: center; gap: 9px; border-right: 1px solid var(--divider); }
@@ -251,10 +253,6 @@ h2{font:600 13px/1 "Barlow Condensed",sans-serif;letter-spacing:.14em;text-trans
   padding:7px 13px;background:transparent;color:rgba(214,235,255,.6);
   border:1px solid rgba(148,188,227,.28);cursor:pointer}
 .ctl button[aria-pressed="true"]{background:#94bce3;color:#16181c;border-color:#94bce3}
-/* 끊김 문구 두 안 — 승인된 쪽만 앱 CSS로 옮긴다 */
-.v-a .note.rs{margin-top:16px}
-.v-b .stale-tag{display:block;margin:0 0 2px}
-.v-b .note.rs{margin-top:6px;line-height:1.35}
 </style></head>
 <body>
 <h1>Claude Usage — 지금 앱에 들어간 화면</h1>
@@ -262,7 +260,7 @@ h2{font:600 13px/1 "Barlow Condensed",sans-serif;letter-spacing:.14em;text-trans
 값은 예시입니다(5시간 35%, 주간 9%, Fable 14%).</p>
 <div class="ctl"><button id="b-dark" aria-pressed="true">다크</button>
 <button id="b-light" aria-pressed="false">라이트</button></div>
-<h2>1 · 크기</h2><p class="h2note">시안은 100% 기준입니다. 메뉴에서 100·125·150·175% 중 고를 수 있고 지금 기본은 125%입니다.</p><div class="row"><div class="item"><span class="cap">100% <b>(시안 원본)</b></span><div class="stage"><div class="holder " data-lay="2a" data-case="ok" data-scale="1"></div></div></div><div class="item"><span class="cap">125% <b>(현재 기본)</b></span><div class="stage"><div class="holder " data-lay="2a" data-case="ok" data-scale="1.25"></div></div></div><div class="item"><span class="cap">150%</span><div class="stage"><div class="holder " data-lay="2a" data-case="ok" data-scale="1.5"></div></div></div></div><h2>2 · 끊김 표시 — 두 안 중 골라 주십시오</h2><p class="h2note">한도 영역만 회색이 되고 시스템 지표는 살아 있습니다. "끊김"은 빨간 굵은 글씨입니다. <b>A안</b>은 문구를 한 줄 아래로 내려 가운데에 두고, <b>B안</b>은 "끊김"을 윗줄로 올려 두 줄로 나눕니다.</p><div class="row"><div class="item"><span class="cap">정상 (비교용)</span><div class="stage"><div class="holder " data-lay="2a" data-case="ok" data-scale="1.25"></div></div></div><div class="item"><span class="cap"><b>A안</b> · 한 줄 내려 가운데</span><div class="stage"><div class="holder v-a" data-lay="2a" data-case="stale" data-scale="1.25"></div></div></div><div class="item"><span class="cap"><b>B안</b> · 두 줄로 분리</span><div class="stage"><div class="holder v-b" data-lay="2a" data-case="stale" data-scale="1.25"></div></div></div></div><h2>3 · 모델별 한도</h2><p class="h2note">시안의 "OPUS" 자리에 서버가 준 모델 이름을 넣습니다. 값이 없으면 그 칸을 숨깁니다(오른쪽).</p><div class="row"><div class="item"><span class="cap">Fable 있음</span><div class="stage"><div class="holder " data-lay="2b" data-case="ok" data-scale="1.25"></div></div></div><div class="item"><span class="cap">없음</span><div class="stage"><div class="holder " data-lay="2b" data-case="stale" data-scale="1.25"></div></div></div></div><h2>4 · 나머지 레이아웃</h2><p class="h2note">메뉴에서 고를 수 있는 일곱 가지 중 나머지입니다. 위 규칙이 모두 같게 적용됩니다.</p><div class="row"><div class="item"><span class="cap">2c</span><div class="stage"><div class="holder " data-lay="2c" data-case="ok" data-scale="1.25"></div></div></div><div class="item"><span class="cap">2d</span><div class="stage"><div class="holder " data-lay="2d" data-case="ok" data-scale="1.25"></div></div></div><div class="item"><span class="cap">2e</span><div class="stage"><div class="holder " data-lay="2e" data-case="ok" data-scale="1.25"></div></div></div><div class="item"><span class="cap">2f</span><div class="stage"><div class="holder " data-lay="2f" data-case="ok" data-scale="1.25"></div></div></div><div class="item"><span class="cap">2g</span><div class="stage"><div class="holder " data-lay="2g" data-case="ok" data-scale="1.25"></div></div></div></div>
+<h2>1 · 크기</h2><p class="h2note">시안은 100% 기준입니다. 메뉴에서 100·125·150·175% 중 고를 수 있고 지금 기본은 125%입니다.</p><div class="row"><div class="item"><span class="cap">100% <b>(시안 원본)</b></span><div class="stage"><div class="holder " data-lay="2a" data-case="ok" data-scale="1"></div></div></div><div class="item"><span class="cap">125% <b>(현재 기본)</b></span><div class="stage"><div class="holder " data-lay="2a" data-case="ok" data-scale="1.25"></div></div></div><div class="item"><span class="cap">150%</span><div class="stage"><div class="holder " data-lay="2a" data-case="ok" data-scale="1.5"></div></div></div></div><h2>2 · 끊김 표시</h2><p class="h2note">한도 영역만 회색이 되고 시스템 지표는 살아 있습니다. "끊김"을 빨간 굵은 글씨로 윗줄에 세우고 문구를 가운데 정렬했습니다.</p><div class="row"><div class="item"><span class="cap">정상</span><div class="stage"><div class="holder " data-lay="2a" data-case="ok" data-scale="1.25"></div></div></div><div class="item"><span class="cap">끊김</span><div class="stage"><div class="holder " data-lay="2a" data-case="stale" data-scale="1.25"></div></div></div></div><h2>3 · 모델별 한도</h2><p class="h2note">시안의 "OPUS" 자리에 서버가 준 모델 이름을 넣습니다. 값이 없으면 그 칸을 숨깁니다(오른쪽).</p><div class="row"><div class="item"><span class="cap">Fable 있음</span><div class="stage"><div class="holder " data-lay="2b" data-case="ok" data-scale="1.25"></div></div></div><div class="item"><span class="cap">없음</span><div class="stage"><div class="holder " data-lay="2b" data-case="stale" data-scale="1.25"></div></div></div></div><h2>4 · 나머지 레이아웃</h2><p class="h2note">메뉴에서 고를 수 있는 일곱 가지 중 나머지입니다. 위 규칙이 모두 같게 적용됩니다.</p><div class="row"><div class="item"><span class="cap">2c</span><div class="stage"><div class="holder " data-lay="2c" data-case="ok" data-scale="1.25"></div></div></div><div class="item"><span class="cap">2d</span><div class="stage"><div class="holder " data-lay="2d" data-case="ok" data-scale="1.25"></div></div></div><div class="item"><span class="cap">2e</span><div class="stage"><div class="holder " data-lay="2e" data-case="ok" data-scale="1.25"></div></div></div><div class="item"><span class="cap">2f</span><div class="stage"><div class="holder " data-lay="2f" data-case="ok" data-scale="1.25"></div></div></div><div class="item"><span class="cap">2g</span><div class="stage"><div class="holder " data-lay="2g" data-case="ok" data-scale="1.25"></div></div></div></div>
 <div id="root" style="position:absolute;left:-9999px"></div>
 <script>const subs={};window.__TAURI__={event:{listen:(n,f)=>{(subs[n]=subs[n]||[]).push(f);
  return Promise.resolve(()=>{});}},
