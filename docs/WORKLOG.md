@@ -23,12 +23,20 @@
 - Node 24.19 · Python 3.12 있음, Rust 툴체인 없음 (Tauri 채택 시 rustup 설치 필요)
 - Claude Code 기록 `.jsonl`의 `message.usage`에 토큰 필드 존재 (1건 확인)
 
-**현재 진행도**: 설계 문서 초안 완료. 코드 0줄.
+**조사가 바꾼 설계 (2026-09-03, [[PRIOR-ART-SURVEY]] §1)**
+- 한도 소스를 단일(비공식 조회)에서 **2계층**으로 변경: 1순위 statusline 훅(공식·정책 안전), 2순위 `/api/oauth/usage`
+  (비공식, 기본 꺼짐 옵트인 + 약관 고지). 근거: Anthropic 2026-02-19 약관 명문화.
+- macOS 서명 없는 배포 절차 수정: "우클릭 → 열기"는 Sequoia부터 불가 → ad-hoc 서명 + "그래도 열기" 안내.
+- 조회 주기 60초 → 180초, `User-Agent: claude-code/<버전>` 필수, 상태에 `stale`·`no_source`·`source` 추가.
+
+**현재 진행도**: 설계 문서 v0.1 완료(조사 반영). 코드 0줄.
 
 **남은 미해결**
-- Q1~Q4 사용자 답변 (특히 Q2 동료의 Claude Code 사용 여부, Q3 Rust 도입 여부)
-- 사용량 조회 응답 형식의 **직접 실측** (조사는 2차 자료 기반 — 구현 전 curl 1회로 확정)
+- Q1~Q4 사용자 답변 (특히 Q2 동료의 Claude Code 사용 여부, Q3 Rust 도입 여부, Q4 옵트인 여부)
+- statusline 훅이 이 계정에서 `rate_limits`를 실제로 내보내는지 — 이 PC에서 훅 1회 실행으로 확정 (M1 첫 작업)
+- `/api/oauth/usage` 응답 형식의 직접 실측 (2차 자료 기반 — 옵트인 구현 전 curl 1회)
 - macOS GPU(IOKit) 경로 미검증 — MacBook에서 M2 때 확인
+- 저장소를 공개로 둘지 (SignPath 무료 서명의 전제) — 사용자 결정
 
 **다음 단계**
 1. 사용자 답변 반영 → DECISIONS 확정 → 화면 시안 공동 세션

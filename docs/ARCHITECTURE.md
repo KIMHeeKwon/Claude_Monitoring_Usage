@@ -31,8 +31,12 @@
 - **A2. 사용자와 동료 모두 Claude Code에 로그인되어 있다.** 한도 조회에 쓰는 토큰은 Claude Code가
   로그인할 때 로컬에 저장한 것을 **읽기만** 한다. 웹(claude.ai)만 쓰는 사람은 이 앱으로 한도를 볼 수 없다.
   → [[DECISIONS]] Q2.
-- **A3. 한도 조회 주소는 비공식이다.** Anthropic이 문서화한 개인 구독자용 사용량 조회 API는 없는 것으로
-  파악된다(조사 결과 [[PRIOR-ART-SURVEY]] §B에서 확정). 따라서 **끊길 수 있음을 전제로** 설계한다 (§6).
+- **A3. 한도 값을 얻는 공식 경로는 하나뿐이고, 비공식 경로는 약관 문제가 있다** ([[PRIOR-ART-SURVEY]] §1·§2,
+  2026-09-03 조사). 공식 경로는 Claude Code의 **statusline JSON**(`rate_limits.five_hour.used_percentage` 등)이며
+  Claude Code 세션이 떠 있을 때만 갱신된다. 비공식 경로(`/api/oauth/usage` + Claude Code 토큰)는 값이 항상
+  나오지만, Anthropic이 2026-02-19에 "구독 계정의 OAuth 토큰을 다른 도구에서 쓰는 것은 소비자 약관 위반"으로
+  명문화했다 (실제 차단은 추론 도구에만 내려졌고 조회 도구는 묵인 중). 따라서 **공식 경로를 1순위**로 하고 비공식
+  경로는 **사용자가 고지를 읽고 켜는 옵트인**으로 둔다 (§5.1, [[DECISIONS]] Q4).
 - **A4. 사용자 PC 실측 (2026-09-03)**: RTX 4090(별도 VRAM 24GB), `nvidia-smi` 동작, Windows 성능 카운터
   `GPU Engine` 존재, Node 24·Python 3.12 설치됨, Rust 툴체인 없음. MacBook은 Apple Silicon으로 가정.
 
@@ -41,9 +45,11 @@
 ```mermaid
 flowchart LR
   subgraph PC["각자의 PC (서버 없음)"]
-    CC["Claude Code 로그인 저장소<br/>Win: ~/.claude/.credentials.json<br/>mac: Keychain 'Claude Code-credentials'"]
+    HOOK["statusline 훅 (공식 경로, 1순위)<br/>Claude Code가 세션 중 실행 →<br/>~/.claude/usage-monitor/status.json 기록"]
+    CC["Claude Code 로그인 저장소 (옵트인, 2순위)<br/>Win: ~/.claude/.credentials.json<br/>mac: Keychain 'Claude Code-credentials'"]
     CRED["credentials 모듈<br/>토큰 읽기 (읽기 전용)"]
-    USAGE["usage 모듈<br/>60초마다 조회 · 파싱"]
+    USAGE["usage 모듈<br/>1순위: status.json 감시<br/>2순위: 180초마다 조회 · 파싱"]
+    HOOK -- "파일 감시" --> USAGE
     SYS["sysmon 모듈<br/>CPU·메모리 (sysinfo)"]
     GPU["gpu 모듈<br/>Win: NVML → PDH 대체<br/>mac: IOKit Accelerator"]
     CORE["코어 (Rust/Tauri)<br/>타이머 · 상태 · 이벤트"]
@@ -55,8 +61,8 @@ flowchart LR
     CORE -- "usage:update {five_hour:42%, resets_at}" --> UI
     CORE -- "sys:update {cpu:23, mem:61, gpu:8}" --> UI
   end
-  API["api.anthropic.com<br/>/api/oauth/usage (비공식)"]
-  USAGE -- "GET + Bearer 토큰" --> API
+  API["api.anthropic.com<br/>/api/oauth/usage (비공식 · 옵트인)"]
+  USAGE -. "옵트인 시에만 GET + Bearer 토큰" .-> API
 ```
 
 **모듈 경계 원칙**: 코어(Rust)와 창(WebView) 사이는 **JSON 이벤트 두 종류**만 오간다. 창은 값을 받아
@@ -66,9 +72,10 @@ flowchart LR
 ## 4. 데이터 계약 (코어 → 창)
 
 ```jsonc
-// usage:update — 60초마다, 또는 창을 다시 열 때
+// usage:update — 값이 바뀔 때마다 (훅 파일 갱신 시, 또는 옵트인 조회 후)
 {
-  "status": "ok" | "no_token" | "auth_expired" | "rate_limited" | "unreachable" | "shape_changed",
+  "source": "statusline" | "oauth",          // 어느 경로에서 온 값인지 창에 표시한다 (조사 교훈 E.1)
+  "status": "ok" | "stale" | "no_source" | "no_token" | "auth_expired" | "rate_limited" | "unreachable" | "shape_changed",
   "fetched_at": "2026-09-03T01:42:10Z",
   "five_hour":  { "used_pct": 42, "resets_at": "2026-09-03T02:54:00Z" },
   "seven_day":  { "used_pct": 18, "resets_at": "2026-09-08T00:00:00Z" },
@@ -83,21 +90,43 @@ flowchart LR
 }
 ```
 
-- 필드 이름과 응답 형식은 [[PRIOR-ART-SURVEY]] §B에서 확인한 실제 응답을 기준으로 **구현 전에 한 번 더
-  실측**한다 (Claude Code 로그인 상태에서 curl 1회). 실측 전 이 계약은 추정이다.
+- statusline JSON의 필드(`rate_limits.five_hour.used_percentage`, `resets_at` epoch 초)는 공식 문서에 있다.
+  `/api/oauth/usage` 응답(`five_hour.utilization`, `resets_at` ISO-8601, `seven_day_opus`, `seven_day_sonnet`)은
+  2차 자료 기준이므로 **옵트인 경로를 구현하기 전에 curl 1회로 실측**한다. 두 경로의 필드 이름이 다르므로
+  usage 모듈이 위 계약으로 정규화한다.
 - `status`가 `ok`가 아니면 창은 **마지막 정상값을 회색으로** 유지하고 상태 문구만 바꾼다. 값이 사라지지 않는다.
 
 ## 5. 데이터 소스별 설계
 
-### 5.1 Claude 구독 한도 (1차 소스)
+### 5.1 Claude 구독 한도 — 두 경로를 계층으로 쓴다
+
+기존 도구 중 가장 성숙한 것들(CodexBar 계열)은 소스를 **순서가 정해진 계층**으로 두고 어느 계층의 값인지 화면에
+표시한다. 같은 방식을 택한다.
+
+**1순위: statusline 훅 (공식 · 정책 안전)**
 
 | 항목 | 설계 |
 |---|---|
-| 토큰 위치 | Windows `%USERPROFILE%\.claude\.credentials.json`, macOS 키체인 항목 `Claude Code-credentials` (조사에서 재확인) |
-| 읽기 방식 | **읽기 전용.** 토큰 갱신(refresh)은 하지 않는다 — Claude Code의 갱신 토큰과 충돌해 사용자의 Claude Code 로그인이 풀릴 수 있다. 만료되면 "Claude Code를 한 번 실행해 주세요"로 안내 |
-| 조회 주기 | 60초. 창을 다시 열거나 사용자가 클릭하면 즉시 1회 |
-| 실패 처리 | 401 → `auth_expired`, 429 → `rate_limited`(주기를 5분으로 늘림), 5xx·네트워크 → `unreachable`, JSON 필드 누락 → `shape_changed` |
+| 원리 | Claude Code는 세션 중 `settings.json`의 `statusLine.command`를 주기적으로 실행하며 표준 입력으로 JSON을 준다. 그 안의 `rate_limits`가 `/usage`와 같은 값이다 (공식 문서 code.claude.com/docs/en/statusline). Pro/Max 한정, 첫 응답 이후부터 |
+| 설치 | 앱이 최초 실행 시 작은 스크립트를 `~/.claude/usage-monitor/`에 놓고, `settings.json`에 statusline 항목을 추가하도록 **사용자 동의를 받아** 설정한다. 사용자가 이미 statusline을 쓰고 있으면 기존 명령을 감싸서(wrapping) 출력은 그대로 두고 JSON만 파일로 복사한다 |
+| 읽기 | 앱은 `status.json` 파일을 감시(file watch)한다. 네트워크 호출 없음 |
+| 한계 | Claude Code 세션이 없으면 갱신되지 않는다 → `stale` 상태로 마지막 값 + 경과 시간을 보여 준다. 웹·데스크톱 앱만 쓴 사용량은 다음 Claude Code 세션 때 반영된다 (한도는 계정 단위로 합산되므로 값 자체는 정확하다) |
+
+**2순위: `/api/oauth/usage` 조회 (비공식 · 옵트인)**
+
+| 항목 | 설계 |
+|---|---|
+| 켜는 방식 | 기본 **꺼짐**. 설정에서 켤 때 "Anthropic 약관상 구독 토큰의 제3자 사용은 금지되어 있으며, 실제로는 조회 용도로 묵인되고 있으나 계정 제재 가능성을 배제할 수 없다"는 고지를 보여 주고 동의를 받는다 |
+| 토큰 위치 | Windows `%USERPROFILE%\.claude\.credentials.json`(`claudeAiOauth.accessToken`), macOS 키체인 `Claude Code-credentials`(계정 `$USER`). `CLAUDE_CONFIG_DIR`가 설정돼 있으면 그 경로를 따른다 |
+| 읽기 방식 | **읽기 전용.** 토큰 갱신(refresh)은 하지 않는다 — Claude Code의 갱신 토큰 회전과 경쟁해 로그인이 풀릴 수 있고, 갱신 호출은 "제3자 사용"의 가장 명백한 형태다. 만료되면 "Claude Code를 한 번 실행해 주세요"로 안내 |
+| 요청 헤더 | `Authorization: Bearer`, `anthropic-beta: oauth-2025-04-20`, **`User-Agent: claude-code/<버전>`** (없으면 429 지속 — 조사 B.1.1) |
+| 조회 주기 | **180초** (토큰 단위 제한 때문). 창을 다시 열면 즉시 1회, 단 직전 조회에서 60초 이내면 생략 |
+| 실패 처리 | 401 → `auth_expired`, 429 → `rate_limited`(주기를 10분으로), 5xx·네트워크 → `unreachable`, JSON 필드 누락 → `shape_changed` |
 | 보안 | 토큰은 메모리에만. 로그·파일·화면에 남기지 않는다. 앱은 Anthropic 외 어디에도 접속하지 않는다 (버전 확인용 GitHub Releases 조회 제외, 이것도 선택) |
+| macOS 추가 위험 | 키체인 항목의 접근 제어 강화가 예고돼 있어(조사 §1-4) 어느 날 읽기가 막힐 수 있다. 막히면 `no_token`으로 내려앉고 1순위 경로는 영향이 없다 |
+
+두 경로가 모두 있으면 **더 최근 값**을 쓰되 `source`를 표시한다. 1순위만으로 충분한지는 M4 시범 배포에서 판단한다
+(동료들이 Claude Code를 하루 종일 띄워 두는지에 달렸다).
 
 ### 5.2 로컬 토큰·비용 집계 (2차, 선택)
 
@@ -121,7 +150,9 @@ flowchart LR
 
 | 상태 | 원인 | 창에 보이는 것 | 사용자가 할 일 |
 |---|---|---|---|
-| `no_token` | Claude Code 로그인 기록 없음 | 한도 영역에 "Claude Code 로그인 필요" | Claude Code 실행 후 `/login` |
+| `no_source` | statusline 훅 미설치, 옵트인도 꺼짐 | "설정에서 연결 방법을 고르세요" | 훅 설치 동의 또는 옵트인 |
+| `stale` | 훅은 있으나 Claude Code 세션이 없어 갱신 안 됨 | 마지막 값(회색) + "38분 전 값" | 없음 (다음 세션에 갱신) |
+| `no_token` | (옵트인) Claude Code 로그인 기록 없음 | 한도 영역에 "Claude Code 로그인 필요" | Claude Code 실행 후 `/login` |
 | `auth_expired` | 토큰 만료 | 마지막 값(회색) + "로그인 갱신 필요" | Claude Code를 한 번 실행 |
 | `rate_limited` | 429 | 마지막 값 + "5분 뒤 재시도" | 없음 |
 | `unreachable` | 네트워크·5xx | 마지막 값 + 경과 시간("12분 전 값") | 없음 |
@@ -135,8 +166,8 @@ flowchart LR
 | 단계 | Windows | macOS |
 |---|---|---|
 | 산출물 | `.msi` 또는 NSIS `.exe` | `.dmg` (universal 또는 arm64) |
-| 서명 | **1단계: 서명 없음.** SmartScreen "추가 정보 → 실행" 안내문 동봉 | **1단계: 서명·공증 없음.** Gatekeeper 차단 → "우클릭 → 열기" 또는 `xattr -d com.apple.quarantine` 안내문 동봉 |
-| 서명 도입 시점 | 배포 인원이 5명을 넘거나 IT 정책에 걸릴 때. Azure Trusted Signing(월 단위 과금)이 인증서 구매보다 싸다 (조사에서 재확인) | Apple Developer Program 연 $99 + notarization |
+| 서명 | **1단계: 서명 없음.** SmartScreen "추가 정보 → 실행" 안내문 동봉. Windows 11의 Smart App Control이 켜진 PC나 회사 정책이 "실행" 버튼을 막은 PC에서는 설치 불가 (조사 §C) | **1단계: ad-hoc 서명만** (`signingIdentity: "-"`) — 없으면 Apple Silicon에서 "손상됨"으로 뜬다. Gatekeeper는 여전히 막으므로 "시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기 + 관리자 암호" 절차를 안내문에 그림으로 넣는다. Sequoia부터 "우클릭 → 열기"는 통하지 않는다 |
+| 서명 도입 시점 | 배포 인원이 5명을 넘거나 IT 정책에 걸릴 때. 저장소를 공개 오픈소스로 두면 **SignPath Foundation 무료 서명**이 가능하다(aqua5230/usage 선례). Azure Artifact Signing은 한국 개인 자격이 불확실(조사 §6) | Apple Developer Program 연 $99 + 공증(notarization). Tauri가 CI에서 지원 |
 | 빌드 | GitHub Actions matrix (windows-latest, macos-latest) → GitHub Releases | 동일 |
 | 업데이트 | 1단계: 앱이 Releases의 최신 태그만 확인해 "새 버전 있음" 표시. 자동 갱신은 2단계 | 동일 |
 
@@ -147,7 +178,8 @@ flowchart LR
 | 순서 | 마일스톤 | 검증 기준 | 바뀔 가능성 |
 |---|---|---|---|
 | M0 | **관통 골격**: 항상-위 창 + 트레이 + CPU/메모리 표시, Windows에서 `.msi`까지 | 설치 파일을 다른 PC에 넣어 실행되면 통과. 앱 CPU 점유 실측 | 프레임워크 선택이 뒤집히면 여기서 드러난다 |
-| M1 | **한도 조회**: 토큰 읽기 → 조회 → 파싱 → 표시, 6가지 실패 상태 | Claude Code 로그아웃/로그인/네트워크 차단 3장면에서 §6대로 동작 | 응답 형식 실측으로 §4 계약이 바뀔 수 있음 |
+| M1 | **한도 표시 1순위**: statusline 훅 설치(동의 화면 포함) → `status.json` 감시 → 표시, `stale` 처리 | 이 PC에서 Claude Code 세션을 열고 닫으며 값 갱신·`stale` 전환 확인. 기존 statusline이 있는 사용자 설정에서도 깨지지 않음 | 훅이 실제로 `rate_limits`를 주는지 첫 실측에서 판명 |
+| M1b | **한도 표시 2순위(옵트인)**: 고지 화면 → 토큰 읽기 → 조회 → 정규화, 실패 상태 전부 | 로그아웃/로그인/네트워크 차단 3장면에서 §6대로 동작. curl 실측으로 §4 계약 확정 | Q4 답에 따라 통째로 빠질 수 있음 |
 | M2 | **GPU**: Windows NVML + PDH 대체, macOS IOKit | RTX 4090 PC, Apple Silicon MacBook, GPU 없는 노트북 3대에서 확인 | macOS 경로가 가장 불확실 |
 | M3 | **macOS 빌드**·`.dmg`·설치 안내문, GitHub Actions 2-OS 빌드 | MacBook에서 다운로드→설치→실행 | 서명 없는 배포의 마찰이 크면 §7 앞당김 |
 | M4 | **동료 시범 배포** 2~3명 | 한 주 사용 후 고장 목록 수집 | 여기서 R6 압력이 온다 — 기능 요청은 [[DECISIONS]]로 |
@@ -157,9 +189,16 @@ M0에서 **화면 시안 확정본**(별도 세션 산출물)을 받아 창을 �
 
 ## 9. 프레임워크 선택 근거
 
-조사 결과([[PRIOR-ART-SURVEY]] §C)를 반영한 비교와 추천은 [[DECISIONS]] Q3에 있다. 이 문서의 §3·§5는
-**Tauri v2(Rust 코어 + WebView 창)** 를 전제로 썼으며, Electron으로 결정되면 §3의 모듈 이름은 그대로
-두고 언어만 바뀐다(`sysinfo`→`systeminformation`, `nvml-wrapper`→`nvidia-smi` 호출 등).
+조사 결과([[PRIOR-ART-SURVEY]] §4·§5)는 **Tauri v2**를 뒷받침한다: CPU·메모리·GPU를 두 OS 모두에서 자식
+프로세스 없이 프로세스 안에서 읽을 수 있는 유일한 후보이고(sysinfo + nvml-wrapper + PDH + IOKit), 같은 조합으로
+6~8MB짜리 트레이 모니터(xinggaoya/system-monitor)와 Windows용 Claude 사용량 트레이 앱(Win-CodexBar)이 이미
+존재한다. Electron은 Windows에서 지표를 읽을 때마다 PowerShell을 띄우고 유휴 메모리가 150MB를 넘어 상시 표시
+앱에 맞지 않는다. 최종 결정은 [[DECISIONS]] Q3. Electron으로 결정되면 §3의 모듈 이름은 그대로 두고 언어만
+바뀐다.
+
+**참고 구현 (G4 — 최고의 레퍼런스는 소스 코드)**: 시스템 지표는 `xinggaoya/system-monitor`(Tauri 2.2 + sysinfo +
+nvml-wrapper), Windows PDH GPU는 `precord` 크레이트, Apple GPU는 `andersrennermalm/gpuinfo`(C, IOKit), statusline
+캡처는 `bartosz-warzocha/claude-statusbar` 확장의 스크립트, 트레이·항상-위 창 구성은 `nesszer/Win-CodexBar`.
 
 ## 10. 범위 밖 (명시적으로 안 하는 것)
 
