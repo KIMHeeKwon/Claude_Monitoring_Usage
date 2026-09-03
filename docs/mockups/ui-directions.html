@@ -1,0 +1,277 @@
+<title>Claude 사용량 창 시안</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Chakra+Petch:wght@500;600&family=Nunito:wght@600;800&display=swap">
+<style>
+  :root {
+    --bg: #f5f4f0;
+    --ink: #1f1e1a;
+    --muted: #6b6860;
+    --line: #d9d6cd;
+    --panel: #ffffff;
+    --accent: #b5532b;      /* 산화철 주황: Claude 계열 색과 이웃하되 그대로 쓰지 않음 */
+    --ok: #2f7d4f;
+    --warn: #b8860b;
+    --crit: #b3261e;
+    --gauge-bg: #14161a;
+    --gauge-ink: #e8eaed;
+    --gauge-dim: #6d7380;
+    --gauge-track: #262a31;
+    --strip-bg: #ffffff;
+    --strip-ink: #1f1e1a;
+    --card-bg: #ffffff;
+    --card-line: #e3e0d8;
+    --batt-bg: #fbf7ee;
+    --batt-ink: #2a2620;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1a1a18; --ink: #ecebe6; --muted: #a09d94; --line: #34332f; --panel: #232321;
+      --accent: #e0754a;
+      --strip-bg: #2a2a27; --strip-ink: #ecebe6;
+      --card-bg: #232321; --card-line: #3a3935;
+      --batt-bg: #2b2823; --batt-ink: #f0ebe0;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1a1a18; --ink: #ecebe6; --muted: #a09d94; --line: #34332f; --panel: #232321;
+    --accent: #e0754a;
+    --strip-bg: #2a2a27; --strip-ink: #ecebe6;
+    --card-bg: #232321; --card-line: #3a3935;
+    --batt-bg: #2b2823; --batt-ink: #f0ebe0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "IBM Plex Sans KR", "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    font-size: 15px; line-height: 1.55;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px 72px; }
+  header h1 { font-size: 26px; font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em; text-wrap: balance; }
+  header p { margin: 0; color: var(--muted); max-width: 64ch; }
+  .data-note { margin: 18px 0 0; padding: 10px 14px; border: 1px dashed var(--line); border-radius: 6px; font-size: 13px; color: var(--muted); max-width: 72ch; }
+  .data-note code { font-family: "IBM Plex Mono", monospace; font-size: 12px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 40px 32px; margin-top: 40px; }
+  .dir { display: flex; flex-direction: column; gap: 14px; }
+  .dir .label { display: flex; align-items: baseline; gap: 10px; }
+  .dir .label .k { font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: 0.08em; color: var(--muted); }
+  .dir .label h2 { font-size: 17px; font-weight: 600; margin: 0; }
+  .dir .why { font-size: 13.5px; color: var(--muted); margin: 0; max-width: 60ch; }
+  .stage { padding: 28px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); display: flex; align-items: center; justify-content: center; min-height: 220px; }
+  .stage.on-desktop { background:
+      linear-gradient(var(--line) 1px, transparent 1px) 0 0 / 100% 28px,
+      var(--panel); }
+  .spec { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; font-size: 12.5px; color: var(--muted); }
+  .spec b { font-weight: 500; color: var(--ink); }
+
+  /* ---------- A. 계기판 ---------- */
+  .gauge {
+    width: 300px; background: var(--gauge-bg); color: var(--gauge-ink);
+    border-radius: 10px; padding: 16px 18px 14px; font-family: "Chakra Petch", "IBM Plex Sans KR", sans-serif;
+    box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  }
+  .gauge .hdr { display: flex; justify-content: space-between; align-items: center; font-size: 11px; letter-spacing: .12em; color: var(--gauge-dim); text-transform: uppercase; }
+  .gauge .hdr .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 6px var(--ok); display: inline-block; margin-right: 6px; vertical-align: 1px; }
+  .gauge svg { display: block; width: 100%; height: auto; margin-top: 4px; }
+  .gauge .big { font-size: 34px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .gauge .row { display: flex; justify-content: space-between; font-size: 12px; color: var(--gauge-dim); margin-top: 8px; font-variant-numeric: tabular-nums; }
+  .gauge .row b { color: var(--gauge-ink); font-weight: 500; }
+  .gauge .bar { height: 4px; background: var(--gauge-track); border-radius: 2px; margin-top: 5px; overflow: hidden; }
+  .gauge .bar i { display: block; height: 100%; background: var(--gauge-ink); border-radius: 2px; }
+
+  /* ---------- B. 한 줄 스트립 ---------- */
+  .stripwrap { display: flex; flex-direction: column; gap: 18px; align-items: center; }
+  .strip {
+    display: inline-flex; align-items: center; gap: 0; height: 30px;
+    background: var(--strip-bg); color: var(--strip-ink);
+    border: 1px solid var(--line); border-radius: 15px; padding: 0 6px 0 12px;
+    font-family: "IBM Plex Mono", monospace; font-size: 12.5px; font-variant-numeric: tabular-nums;
+    box-shadow: 0 2px 10px rgba(0,0,0,.12);
+  }
+  .strip .seg { padding: 0 9px; border-left: 1px solid var(--line); display: flex; align-items: center; gap: 6px; }
+  .strip .seg:first-child { border-left: 0; padding-left: 0; }
+  .strip .mini { width: 34px; height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; }
+  .strip .mini i { display: block; height: 100%; background: var(--strip-ink); }
+  .strip .tag { color: var(--muted); }
+  .strip .grip { color: var(--muted); padding-left: 8px; font-size: 14px; letter-spacing: -2px; }
+  .menubar { width: 100%; max-width: 420px; height: 26px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; display: flex; align-items: center; justify-content: flex-end; padding: 0 10px; gap: 14px; font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--muted); }
+  .menubar .me { color: var(--ink); font-weight: 500; }
+
+  /* ---------- C. 카드 대시보드 ---------- */
+  .card {
+    width: 320px; background: var(--card-bg); border: 1px solid var(--card-line); border-radius: 8px;
+    padding: 14px 16px 12px; font-size: 13px; box-shadow: 0 6px 20px rgba(0,0,0,.10);
+  }
+  .card .top { display: flex; justify-content: space-between; align-items: baseline; }
+  .card .top .t { font-weight: 600; font-size: 13.5px; }
+  .card .top .s { font-size: 11.5px; color: var(--muted); font-family: "IBM Plex Mono", monospace; }
+  .card .meter { margin-top: 12px; }
+  .card .meter .l { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; }
+  .card .meter .l span:last-child { color: var(--muted); font-size: 12px; }
+  .card .meter .bar { height: 7px; background: var(--line); border-radius: 4px; margin-top: 5px; overflow: hidden; }
+  .card .meter .bar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+  .card .meter .bar i.k { background: var(--ok); }
+  .card .split { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--card-line); }
+  .card .split .n { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .card .split .d { font-size: 11.5px; color: var(--muted); }
+  .card .spark { margin-top: 10px; }
+  .card .spark svg { display: block; width: 100%; height: 36px; }
+  .card .spark .cap { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; margin-top: 2px; font-family: "IBM Plex Mono", monospace; }
+
+  /* ---------- D. 배터리 ---------- */
+  .batt {
+    width: 250px; background: var(--batt-bg); color: var(--batt-ink); border-radius: 18px;
+    padding: 18px 20px 16px; font-family: "Nunito", "IBM Plex Sans KR", sans-serif;
+    box-shadow: 0 8px 22px rgba(60,40,10,.18); text-align: center;
+  }
+  .batt .icon { display: inline-block; position: relative; width: 150px; height: 64px; border: 4px solid var(--batt-ink); border-radius: 12px; padding: 5px; }
+  .batt .icon::after { content: ""; position: absolute; right: -14px; top: 18px; width: 8px; height: 24px; background: var(--batt-ink); border-radius: 0 4px 4px 0; }
+  .batt .icon .cells { display: flex; gap: 4px; height: 100%; }
+  .batt .icon .cells i { flex: 1; border-radius: 4px; background: var(--ok); }
+  .batt .icon .cells i.off { background: transparent; border: 1.5px dashed var(--line); }
+  .batt .pct { font-size: 40px; font-weight: 800; line-height: 1; margin-top: 12px; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .batt .pct small { font-size: 16px; font-weight: 600; margin-left: 2px; }
+  .batt .sub { font-size: 13px; margin-top: 4px; opacity: .8; }
+  .batt .wk { margin-top: 12px; font-size: 12.5px; display: flex; justify-content: space-between; opacity: .85; font-variant-numeric: tabular-nums; }
+
+  .compare { margin-top: 56px; border-top: 1px solid var(--line); padding-top: 28px; }
+  .compare h2 { font-size: 18px; font-weight: 600; margin: 0 0 12px; }
+  .compare .tbl { overflow-x: auto; }
+  table { border-collapse: collapse; font-size: 13.5px; min-width: 720px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 600; font-size: 12.5px; color: var(--muted); }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  .ask { margin-top: 28px; padding: 16px 18px; background: var(--panel); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; max-width: 72ch; }
+  .ask p { margin: 0 0 6px; }
+  .ask p:last-child { margin: 0; }
+  @media (prefers-reduced-motion: no-preference) { .gauge .dot { animation: pulse 2.4s ease-in-out infinite; } }
+  @keyframes pulse { 50% { opacity: .45; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Claude 사용량 창, 네 가지 방향</h1>
+    <p>같은 숫자를 네 가지 다른 계열의 화면으로 만들었습니다. 미세한 변주가 아니라 성격이 다른 후보이므로, "어떤 것이 책상 위에 하루 종일 떠 있어도 괜찮은가"를 기준으로 봐 주십시오.</p>
+    <div class="data-note">
+      모든 숫자는 <b>예시 데이터</b>입니다. 5시간 창 사용률 <code>42%</code>(1시간 12분 뒤 초기화), 주간 사용률 <code>18%</code>(화요일 09:00 초기화), 오늘 Claude Code 토큰 <code>1.2M</code>, 추정 비용 <code>$8.40</code>을 공통으로 넣었습니다. 실제 값은 각자의 계정에서 읽어 옵니다.
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <!-- A -->
+    <section class="dir">
+      <div class="label"><span class="k">A</span><h2>계기판</h2></div>
+      <p class="why">자동차 연료계처럼 "지금 얼마나 남았나"를 반원 게이지 하나로 읽습니다. 어두운 패널이라 밝은 화면 구석에서도 눈에 띄고, 늘 떠 있는 작은 기기처럼 보입니다.</p>
+      <div class="stage on-desktop">
+        <div class="gauge">
+          <div class="hdr"><span><span class="dot"></span>5-hour window</span><span>resets 10:42</span></div>
+          <svg viewBox="0 0 264 150" aria-label="5시간 창 사용률 42%">
+            <path d="M22 132 A110 110 0 0 1 242 132" fill="none" stroke="#262a31" stroke-width="14" stroke-linecap="round"/>
+            <path d="M22 132 A110 110 0 0 1 242 132" fill="none" stroke="#e8eaed" stroke-width="14" stroke-linecap="round" stroke-dasharray="345.6" stroke-dashoffset="200.4"/>
+            <g fill="#6d7380" font-family="Chakra Petch, sans-serif" font-size="10">
+              <text x="18" y="150">0</text><text x="124" y="18" text-anchor="middle">50</text><text x="232" y="150" text-anchor="end">100</text>
+            </g>
+            <text x="132" y="112" text-anchor="middle" fill="#e8eaed" font-family="Chakra Petch, sans-serif" font-size="40" font-weight="600">42<tspan font-size="18" fill="#6d7380">%</tspan></text>
+            <text x="132" y="134" text-anchor="middle" fill="#6d7380" font-family="Chakra Petch, sans-serif" font-size="11" letter-spacing="1">USED · 1h 12m LEFT</text>
+          </svg>
+          <div class="row"><span>WEEK · all models</span><b>18%</b></div>
+          <div class="bar"><i style="width:18%"></i></div>
+          <div class="row"><span>WEEK · Opus</span><b>7%</b></div>
+          <div class="bar"><i style="width:7%"></i></div>
+        </div>
+      </div>
+      <div class="spec"><b>창 크기</b><span>300 × 230 px, 항상 위(always on top), 테두리 없는 창</span><b>맞는 사람</b><span>남은 양을 "감"으로 읽고 싶은 사람</span><b>위험</b><span>어두운 패널이 밝은 문서 위에서 무겁게 느껴질 수 있음</span></div>
+    </section>
+
+    <!-- B -->
+    <section class="dir">
+      <div class="label"><span class="k">B</span><h2>한 줄 스트립</h2></div>
+      <p class="why">숫자 세 개를 한 줄에 담은 알약 모양 막대입니다. 화면을 거의 차지하지 않으며, 맥에서는 그대로 메뉴바 항목이 되고, 윈도우에서는 작업 표시줄 위에 떠 있는 작은 띠가 됩니다.</p>
+      <div class="stage">
+        <div class="stripwrap">
+          <div class="strip" role="img" aria-label="5시간 창 42%, 주간 18%, 1시간 12분 뒤 초기화">
+            <span class="seg"><span class="tag">5h</span><span class="mini"><i style="width:42%"></i></span>42%</span>
+            <span class="seg"><span class="tag">wk</span><span class="mini"><i style="width:18%"></i></span>18%</span>
+            <span class="seg"><span class="tag">↻</span>1h12m</span>
+            <span class="grip">⋮⋮</span>
+          </div>
+          <div class="menubar"><span>Wi-Fi</span><span>100%</span><span class="me">C 42% · 18%</span><span>수 10:42</span></div>
+        </div>
+      </div>
+      <div class="spec"><b>창 크기</b><span>약 260 × 30 px 띠, 또는 메뉴바·트레이 텍스트</span><b>맞는 사람</b><span>화면을 가리는 것을 싫어하고 숫자만 보면 되는 사람</span><b>위험</b><span>글자가 작아 고해상도 화면에서 배율 조정이 필요함</span></div>
+    </section>
+
+    <!-- C -->
+    <section class="dir">
+      <div class="label"><span class="k">C</span><h2>카드 대시보드</h2></div>
+      <p class="why">한도 두 개에 더해 오늘의 토큰·비용과 최근 24시간 추이까지 담은 작은 카드입니다. "얼마나 썼나"보다 "무엇에 얼마나 썼나"를 알고 싶은 사람에게 맞습니다.</p>
+      <div class="stage">
+        <div class="card">
+          <div class="top"><span class="t">Claude 사용량</span><span class="s">10:42 갱신</span></div>
+          <div class="meter">
+            <div class="l"><span>5시간 창</span><span>42% · 1h 12m 뒤 초기화</span></div>
+            <div class="bar"><i style="width:42%"></i></div>
+          </div>
+          <div class="meter">
+            <div class="l"><span>주간 (전체 모델)</span><span>18% · 화 09:00</span></div>
+            <div class="bar"><i class="k" style="width:18%"></i></div>
+          </div>
+          <div class="meter">
+            <div class="l"><span>주간 (Opus)</span><span>7%</span></div>
+            <div class="bar"><i class="k" style="width:7%"></i></div>
+          </div>
+          <div class="split">
+            <div><div class="n">1.2M</div><div class="d">오늘 토큰 (Claude Code)</div></div>
+            <div><div class="n">$8.40</div><div class="d">오늘 추정 비용</div></div>
+          </div>
+          <div class="spark">
+            <svg viewBox="0 0 288 36" preserveAspectRatio="none" aria-label="최근 24시간 시간별 토큰">
+              <polyline fill="none" stroke="#b5532b" stroke-width="1.5" points="0,30 12,31 24,29 36,32 48,30 60,26 72,20 84,22 96,14 108,17 120,10 132,12 144,8 156,13 168,18 180,16 192,9 204,6 216,11 228,15 240,12 252,7 264,9 276,4 288,6"/>
+              <circle cx="288" cy="6" r="2.5" fill="#b5532b"/>
+            </svg>
+            <div class="cap"><span>-24h</span><span>지금</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="spec"><b>창 크기</b><span>320 × 300 px, 접으면 5시간 창 한 줄만 남음</span><b>맞는 사람</b><span>비용·모델별 소비를 같이 보고 싶은 사람</span><b>위험</b><span>정보가 많아 "상시 표시"보다 "가끔 펼쳐 보는 창"이 되기 쉬움</span></div>
+    </section>
+
+    <!-- D -->
+    <section class="dir">
+      <div class="label"><span class="k">D</span><h2>배터리</h2></div>
+      <p class="why">남은 한도를 배터리 잔량처럼, 초기화까지의 시간을 "충전 완료까지"처럼 보여 줍니다. 숫자를 몰라도 색과 칸 수로 상태가 읽히므로 공유하기에 가장 쉽습니다.</p>
+      <div class="stage">
+        <div class="batt">
+          <div class="icon" role="img" aria-label="남은 한도 58%">
+            <div class="cells"><i></i><i></i><i></i><i></i><i></i><i></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i></div>
+          </div>
+          <div class="pct">58<small>%</small></div>
+          <div class="sub">남음 · 1시간 12분 뒤 가득 참</div>
+          <div class="wk"><span>이번 주</span><span>82% 남음</span></div>
+        </div>
+      </div>
+      <div class="spec"><b>창 크기</b><span>250 × 210 px, 색이 초록 → 노랑 → 빨강으로 바뀜</span><b>맞는 사람</b><span>수치보다 "괜찮은가/위험한가"만 알면 되는 사람</span><b>위험</b><span>"사용률 42%"를 "남음 58%"로 뒤집어 보여 주므로, 공식 화면과 숫자가 달라 헷갈릴 수 있음</span></div>
+    </section>
+  </div>
+
+  <div class="compare">
+    <h2>한눈에 비교</h2>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>방향</th><th>차지하는 면적</th><th>담는 정보</th><th>읽는 방식</th><th>구현 난도</th></tr></thead>
+        <tbody>
+          <tr><td>A 계기판</td><td>작음</td><td>한도 3개</td><td>바늘 위치를 감으로</td><td>보통 (SVG 게이지)</td></tr>
+          <tr><td>B 한 줄 스트립</td><td>매우 작음</td><td>한도 2개 + 남은 시간</td><td>숫자를 그대로</td><td>가장 낮음</td></tr>
+          <tr><td>C 카드 대시보드</td><td>중간</td><td>한도 3개 + 토큰·비용 + 추이</td><td>표처럼 훑어보기</td><td>가장 높음 (로컬 기록 집계 필요)</td></tr>
+          <tr><td>D 배터리</td><td>작음</td><td>남은 양 2개</td><td>색과 칸 수로</td><td>낮음</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="ask">
+      <p><b>봐 주셨으면 하는 것</b></p>
+      <p>1. 하루 종일 떠 있어도 거슬리지 않는 것은 어느 쪽입니까? (A·D는 존재감이 있고, B는 거의 없습니다.)</p>
+      <p>2. 토큰·비용(C의 아래 절반)이 꼭 필요합니까? 필요 없다면 데이터 소스 하나를 통째로 뺄 수 있습니다.</p>
+      <p>3. 한 방향을 고르지 않고 "B를 기본으로, 클릭하면 C가 펼쳐진다"처럼 섞는 것도 가능합니다.</p>
+    </div>
+  </div>
+</div>

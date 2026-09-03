@@ -1,0 +1,21 @@
+# build outputs
+/target/
+/dist/
+/build/
+/node_modules/
+/src-tauri/target/
+/src-tauri/gen/
+
+# local secrets — never commit tokens
+*.credentials.json
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# task-local scratch (G5 임시 파일은 커밋하지 않는다)
+implementation-notes.md

@@ -1,0 +1,38 @@
+# Claude_Monitoring_Usage — 프로젝트 CLAUDE.md
+
+> 전역 규칙(`~/.claude/CLAUDE.md`, `rules/*.md`)을 그대로 상속한다. 이 파일은 이 프로젝트에만
+> 해당하는 고정 사실과 오버라이드만 담는다.
+
+## 프로젝트 정의 (2026-09-03 사용자 요청 기준)
+
+- **목적**: 개인의 Claude 사용량(구독 한도 창)과 이 PC의 CPU·메모리·GPU 사용량을 **한 창에**
+  보여 주는 아주 작은 상시 표시 프로그램. "아주 간단한 프로그램"이 사용자의 첫 마디다 —
+  기능 추가 압력이 생기면 이 문장으로 되돌아온다.
+- **대상 플랫폼**: Windows + macOS. 둘 다 1급 대상이다.
+- **배포 대상**: 사용자 본인 + 주변 동료. 각자 자기 Claude 계정으로 쓴다. **서버 없음.**
+  동료가 개발 도구 없이 설치할 수 있어야 한다.
+- **화면 시안(G3)은 사용자와 함께 별도 세션에서 만든다** (2026-09-03 사용자 지시).
+  `docs/mockups/ui-directions.html`은 그 전에 그린 초벌 스케치일 뿐이며, 확정본이 아니다.
+
+## 저장소 · 계정
+
+- 원격: `https://github.com/KIMHeeKwon/Claude_Monitoring_Usage.git` — **개인 계정(KIMHeeKwon)** 소유.
+  push 전 `gh auth status`의 활성 계정이 KIMHeeKwon인지 확인한다 (전역 규칙 "GitHub 계정 관리").
+- 커밋 이메일: `hkkim79@gmail.com` (로컬 `git config user.email`로 지정됨).
+- 로컬 경로: 연구소 PC `F:\Project\PopUp_ Claude_Usages`.
+
+## 보안 고정 사실
+
+- 이 앱은 Claude Code가 저장한 **OAuth 토큰을 읽기만** 하고, 어디에도 저장·전송하지 않는다
+  (Anthropic 엔드포인트 호출 제외). 토큰·자격 증명 파일은 절대 커밋하지 않는다 (`.gitignore`).
+- 사용량 조회에 쓰는 엔드포인트가 **비공식(reverse-engineered)** 이라면, 그 사실을 README와
+  코드 주석에 명시하고, 실패 시 앱이 조용히 "조회 불가" 상태로 내려앉도록 설계한다.
+
+## 문서 위치
+
+| 문서 | 역할 |
+|------|------|
+| `docs/ARCHITECTURE.md` | 설계 단일 원천 (요구·전제·모듈·데이터 흐름·배포) |
+| `docs/PRIOR-ART-SURVEY.md` | G4.2 선행 도구·데이터 소스·프레임워크 조사 |
+| `DECISIONS.md` | P0 결정과 미결 질문 |
+| `docs/WORKLOG.md` | 진행 로그 |
