@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>Claude Usage</title>
+  <style>
+    /* M0 임시 화면 — 숫자만 띄운다. 확정 시안은 사용자와 별도 세션에서 만든다. */
+    :root { color-scheme: dark; }
+    html, body { margin: 0; height: 100%; background: #16181c; color: #e6e8eb;
+      font: 13px/1.4 "Segoe UI", system-ui, -apple-system, sans-serif; user-select: none; overflow: hidden; }
+    .bar { display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 10px 4px; font-size: 11px; color: #8a9099; letter-spacing: .06em; }
+    .bar b { color: #c9ccd1; font-weight: 600; }
+    .rows { padding: 0 10px 8px; display: grid; gap: 6px; }
+    .row { display: grid; grid-template-columns: 38px 1fr 62px; align-items: center; gap: 8px;
+      font-variant-numeric: tabular-nums; }
+    .row .k { color: #8a9099; font-size: 11px; }
+    .row .v { text-align: right; }
+    .track { height: 5px; background: #2a2e35; border-radius: 3px; overflow: hidden; }
+    .track i { display: block; height: 100%; width: 0; background: #e0754a; border-radius: 3px;
+      transition: width .4s ease; }
+    .row.dim { opacity: .45; }
+  </style>
+</head>
+<body>
+  <div class="bar" data-tauri-drag-region><b data-tauri-drag-region>Claude Usage</b><span id="stamp" data-tauri-drag-region>M0</span></div>
+  <div class="rows">
+    <div class="row dim"><span class="k">5h</span><div class="track"><i id="b-5h"></i></div><span class="v" id="v-5h">M1에서</span></div>
+    <div class="row"><span class="k">CPU</span><div class="track"><i id="b-cpu"></i></div><span class="v" id="v-cpu">–</span></div>
+    <div class="row"><span class="k">MEM</span><div class="track"><i id="b-mem"></i></div><span class="v" id="v-mem">–</span></div>
+  </div>
+  <script>
+    // Tauri v2: withGlobalTauri=true 이므로 번들러 없이 window.__TAURI__로 접근한다.
+    const { listen } = window.__TAURI__.event;
+    const el = (id) => document.getElementById(id);
+    listen("sys:update", ({ payload: s }) => {
+      el("b-cpu").style.width = s.cpu_pct + "%";
+      el("v-cpu").textContent = s.cpu_pct.toFixed(0) + "%";
+      const pct = (s.mem.used_gb / s.mem.total_gb) * 100;
+      el("b-mem").style.width = pct + "%";
+      el("v-mem").textContent = s.mem.used_gb.toFixed(1) + "/" + s.mem.total_gb.toFixed(0) + "G";
+      el("stamp").textContent = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+    });
+  </script>
+</body>
+</html>

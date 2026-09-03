@@ -1,0 +1,14 @@
+{
+  "name": "claude-monitoring-usage",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Claude 구독 한도 + CPU/메모리/GPU 상시 표시 창 (Windows/macOS)",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}
