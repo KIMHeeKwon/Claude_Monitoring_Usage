@@ -54,7 +54,8 @@ npm run build    # 설치 파일: src-tauri/target/release/bundle/
 
 ## 설치 (동료)
 
-Releases에서 설치 파일을 받습니다. 서명이 없어서 경고가 뜹니다.
+**[최신 릴리스](https://github.com/KIMHeeKwon/Claude_Monitoring_Usage/releases/latest)** 에서 설치 파일을 받습니다.
+서명이 없어서 경고가 뜹니다.
 - Windows: "Windows의 PC 보호" → **추가 정보 → 실행**
 - macOS: 시스템 설정 → 개인정보 보호 및 보안 → **그래도 열기** (Sequoia부터 "우클릭 → 열기"는 통하지 않습니다)
 
