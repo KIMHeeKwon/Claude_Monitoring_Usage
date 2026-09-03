@@ -117,7 +117,8 @@ flowchart LR
 | 항목 | 설계 |
 |---|---|
 | 원리 | Claude Code는 세션 중 `settings.json`의 `statusLine.command`를 주기적으로 실행하며 표준 입력으로 JSON을 준다. 그 안의 `rate_limits`가 `/usage`와 같은 값이다 (공식 문서 code.claude.com/docs/en/statusline). Pro/Max 한정, 첫 응답 이후부터 |
-| 설치 | 앱이 최초 실행 시 작은 스크립트를 `~/.claude/usage-monitor/`에 놓고, `settings.json`에 statusline 항목을 추가하도록 **사용자 동의를 받아** 설정한다. 사용자가 이미 statusline을 쓰고 있으면 기존 명령을 감싸서(wrapping) 출력은 그대로 두고 JSON만 파일로 복사한다 |
+| 설치 | 앱이 최초 실행 시 작은 스크립트를 `~/.claude/usage-monitor/`에 놓고, `settings.json`에 statusline 항목을 추가하도록 **사용자 동의를 받아** 설정한다. 사용자가 이미 statusline을 쓰고 있으면 기존 명령을 감싸서(wrapping) 출력은 그대로 두고 JSON만 파일로 복사한다. **실측 (2026-09-03, 사용자 PC)**: `settings.json`에 이미 다른 도구(orca)의 statusline 항목이 있고, 그 경로가 MacBook 경로(`/Users/...`)다 — 즉 `settings.json`이 두 대 사이에 동기화된다. 따라서 훅 명령은 **OS 중립 경로**(`~/.claude/usage-monitor/hook`)와 두 OS에서 모두 도는 셸 형태로 써야 하며, 감싸기(wrapping)는 설계가 아니라 필수다 |
+| 어느 Claude Code가 훅을 돌리는가 | "Claude Code"는 CLI(`claude` 명령)를 뜻한다. 터미널 CLI는 statusline을 확실히 실행한다. 데스크톱 앱의 Code 탭과 IDE 확장은 같은 CLI 엔진을 쓰고 로그인 파일도 공유하지만, statusline 명령을 실행하는지는 **M1에서 실측**한다 (미검증). 채팅 전용 Claude 데스크톱 앱은 Claude Code가 아니며 로컬에 아무 값도 남기지 않는다 |
 | 읽기 | 앱은 `status.json` 파일을 감시(file watch)한다. 네트워크 호출 없음 |
 | 한계 | Claude Code 세션이 없으면 갱신되지 않는다 → `stale` 상태로 마지막 값 + 경과 시간을 보여 준다. 웹·데스크톱 앱만 쓴 사용량은 다음 Claude Code 세션 때 반영된다 (한도는 계정 단위로 합산되므로 값 자체는 정확하다) |
 
